@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderCircle, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,9 +19,8 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export function LoginForm() {
+export function LoginForm({ callbackError }: { callbackError: boolean }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [googleLoading, setGoogleLoading] = React.useState(false);
@@ -33,8 +32,6 @@ export function LoginForm() {
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
-
-  const callbackError = searchParams.get("error");
 
   async function login(values: FormValues) {
     setServerError(null);

@@ -1,10 +1,10 @@
-import { Suspense } from "react";
 import { LoginForm } from "@/features/auth/login-form";
 
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-[#f2f4f0]" />}>
-      <LoginForm />
-    </Suspense>
-  );
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string | string[] }>;
+}) {
+  const { error } = await searchParams;
+  return <LoginForm callbackError={Boolean(error)} />;
 }
