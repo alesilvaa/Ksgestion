@@ -69,19 +69,19 @@ export function LoginForm() {
   }
 
   return (
-    <main className="manageopy-login relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-8">
+    <main className="manageopy-login relative flex min-h-[100svh] items-center justify-center overflow-x-hidden overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
       <div aria-hidden="true" className="manageopy-orb manageopy-orb-one" />
       <div aria-hidden="true" className="manageopy-orb manageopy-orb-two" />
-      <div className="relative z-10 w-full max-w-[520px] animate-enter">
-        <section className="manageopy-login-card rounded-[24px] bg-white px-6 py-6 shadow-[0_28px_80px_rgba(0,0,0,.22)] sm:px-10 sm:py-8">
+      <div className="relative z-10 w-full max-w-[440px] animate-enter">
+        <section className="manageopy-login-card rounded-[22px] bg-white px-5 py-5 shadow-[0_24px_64px_rgba(0,0,0,.2)] sm:px-8 sm:py-6">
           <div className="flex flex-col items-center text-center">
-            <div className="manageopy-login-mark grid size-[76px] place-items-center bg-[#f0f1ef] text-[36px] font-black tracking-[-.08em] text-[#173d2f]">
+            <div className="manageopy-login-mark grid size-16 place-items-center rounded-[18px] bg-[#f0f1ef] text-[30px] font-black tracking-[-.08em] text-[#173d2f]">
               KS
             </div>
-            <p className="mt-3 text-[28px] font-extrabold leading-none tracking-[-.06em] text-[#14241b]">
+            <p className="mt-2.5 text-[25px] font-extrabold leading-none tracking-[-.06em] text-[#14241b]">
               {appConfig.productName}
             </p>
-            <p className="mt-3 text-sm font-semibold text-[#78847d]">
+            <p className="mt-2 text-[13px] font-semibold text-[#78847d]">
               {appConfig.productDescription}
             </p>
           </div>
@@ -89,7 +89,7 @@ export function LoginForm() {
           {(serverError || callbackError) && (
             <div
               role="alert"
-              className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium leading-5 text-danger"
+              className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-medium leading-5 text-danger"
             >
               {serverError ??
                 "No pudimos completar el acceso con Google. Intentá nuevamente."}
@@ -98,12 +98,12 @@ export function LoginForm() {
 
           <form
             onSubmit={handleSubmit(login)}
-            className="manageopy-login-form mt-6 space-y-4"
+            className="manageopy-login-form mt-5 space-y-3"
           >
             <div>
               <Label
                 htmlFor="login-email"
-                className="mb-2 text-[13px] font-extrabold uppercase tracking-[.08em] text-[#596860]"
+                className="mb-1.5 text-xs font-extrabold uppercase tracking-[.08em] text-[#596860]"
               >
                 Email
               </Label>
@@ -114,7 +114,7 @@ export function LoginForm() {
                   type="email"
                   autoComplete="email"
                   placeholder="usuario@empresa.com"
-                  className="manageopy-login-field h-14 rounded-[16px] border-2 border-[#e0e7e2] bg-[#f7f9f7] pl-[52px] text-[15px] font-semibold placeholder:text-[#95a098] focus:border-[#275f45]"
+                  className="manageopy-login-field h-12 rounded-[14px] border-2 border-[#e0e7e2] bg-[#f7f9f7] pl-[50px] text-sm font-semibold placeholder:text-[#95a098] focus:border-[#275f45]"
                   {...register("email")}
                 />
               </div>
@@ -127,7 +127,7 @@ export function LoginForm() {
             <div>
               <Label
                 htmlFor="login-password"
-                className="mb-2 text-[13px] font-extrabold uppercase tracking-[.08em] text-[#596860]"
+                className="mb-1.5 text-xs font-extrabold uppercase tracking-[.08em] text-[#596860]"
               >
                 Contraseña
               </Label>
@@ -137,7 +137,7 @@ export function LoginForm() {
                   id="login-password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
-                  className="manageopy-login-field h-14 rounded-[16px] border-2 border-[#e0e7e2] bg-[#f7f9f7] pl-[52px] pr-[88px] text-[15px] font-semibold tracking-[.15em] focus:border-[#275f45]"
+                  className="manageopy-login-field h-12 rounded-[14px] border-2 border-[#e0e7e2] bg-[#f7f9f7] pl-[50px] pr-[88px] text-sm font-semibold tracking-[.15em] focus:border-[#275f45]"
                   {...register("password")}
                 />
                 <button
@@ -158,7 +158,7 @@ export function LoginForm() {
               )}
             </div>
             <Button
-              className="mt-1 h-14 w-full rounded-[16px] bg-[#173d2f] text-[15px] font-extrabold shadow-[0_12px_18px_rgba(23,61,47,.24)] hover:bg-[#0e3023]"
+              className="mt-1 h-12 w-full rounded-[14px] bg-[#173d2f] text-sm font-extrabold shadow-[0_10px_16px_rgba(23,61,47,.2)] hover:bg-[#0e3023]"
               type="submit"
               disabled={isSubmitting}
             >
@@ -166,14 +166,14 @@ export function LoginForm() {
               Ingresar al sistema
             </Button>
           </form>
-          <p className="manageopy-login-footer-gap mt-5 text-center text-sm font-bold text-[#7d8981]">
+          <p className="manageopy-login-footer-gap mt-4 text-center text-xs font-bold text-[#7d8981]">
             · {appConfig.productName} ·
           </p>
-          <div className="my-5 h-px w-full bg-[#edf0ed]" />
+          <div className="my-4 h-px w-full bg-[#edf0ed]" />
           <Button
             type="button"
             variant="secondary"
-            className="h-11 w-full rounded-xl border-[#e0e7e2] bg-white text-sm font-bold text-[#26392f]"
+            className="h-10 w-full rounded-xl border-[#e0e7e2] bg-white text-[13px] font-bold text-[#26392f]"
             onClick={loginWithGoogle}
             disabled={googleLoading}
           >
@@ -184,18 +184,18 @@ export function LoginForm() {
             )}
             Continuar con Google
           </Button>
-          <div className="mt-5 flex items-center justify-center gap-2 text-center text-[10px] font-bold uppercase tracking-[.15em] text-[#89938d]">
+          <div className="mt-4 flex items-center justify-center gap-2 text-center text-[9px] font-bold uppercase tracking-[.14em] text-[#89938d]">
             <ShieldCheck className="size-3.5 text-[#3d7157]" /> Acceso privado y
             seguro
           </div>
         </section>
-        <footer className="manageopy-login-footer-gap mt-4 flex items-center justify-center gap-3 text-white">
-          <span className="grid size-10 place-items-center overflow-hidden rounded-xl bg-white p-1.5">
+        <footer className="manageopy-login-footer-gap mt-3 flex items-center justify-center gap-2.5 text-white">
+          <span className="grid size-9 place-items-center overflow-hidden rounded-xl bg-white p-1.5">
             <Image
               src="/brand/manageopy-mark.png"
               alt=""
-              width={36}
-              height={36}
+              width={32}
+              height={32}
               className="size-full object-contain"
             />
           </span>
@@ -203,7 +203,7 @@ export function LoginForm() {
             <span className="block text-[9px] font-bold uppercase tracking-[.22em] text-white/55">
               Desarrollado por
             </span>
-            <span className="mt-1 block text-base font-extrabold tracking-[-.02em]">
+            <span className="mt-0.5 block text-sm font-extrabold tracking-[-.02em]">
               {appConfig.developerName} <span aria-hidden="true">↗</span>
             </span>
           </span>

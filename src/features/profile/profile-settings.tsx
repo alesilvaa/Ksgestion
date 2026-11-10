@@ -29,7 +29,7 @@ function createAvatarOptions(
     new Set([
       currentSeed,
       ...Array.from(
-        { length: 11 },
+        { length: 7 },
         (_, index) => `${profileId}-avatar-${round}-${index + 1}`,
       ),
     ]),
@@ -130,11 +130,11 @@ function ProfileForm({
       }
     >
       {onboarding ? (
-        <div className="mb-6 text-center">
+        <div className="mb-4 text-center">
           <p className="text-xs font-extrabold uppercase tracking-[.16em] text-brand">
             Primera vez
           </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-[-.045em] text-[#173d2f]">
+          <h1 className="mt-1.5 text-2xl font-extrabold tracking-[-.045em] text-[#173d2f]">
             ¡Bienvenido, {profile.displayName}!
           </h1>
           <p className="mt-2 text-sm text-muted">
@@ -154,13 +154,16 @@ function ProfileForm({
       )}
 
       <div
-        className={`mt-6 grid gap-6 ${onboarding ? "" : "xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.75fr)]"}`}
+        className={`mt-4 grid gap-4 ${onboarding ? "" : "xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.75fr)]"}`}
       >
         <form
           onSubmit={saveProfile}
-          className="rounded-[20px] border bg-white p-5 sm:p-7"
+          className={cn(
+            "rounded-[20px] border bg-white",
+            onboarding ? "p-4 sm:p-5" : "p-5 sm:p-7",
+          )}
         >
-          <div className="flex items-center gap-3">
+          <div className={cn("flex items-center gap-3", onboarding && "hidden")}>
             <span className="grid size-10 place-items-center rounded-xl bg-brand-soft text-brand">
               <UserRound className="size-5" />
             </span>
@@ -174,58 +177,78 @@ function ProfileForm({
             </div>
           </div>
 
-          <div className="mt-7 rounded-[18px] border border-[#dce8df] bg-[linear-gradient(135deg,#f4f8f4,#edf4ef)] p-4 sm:p-5">
-            <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-              <div className="avatar-preview-halo grid size-24 shrink-0 place-items-center rounded-[28px] bg-white shadow-[0_10px_30px_rgba(23,61,47,.12)]">
+          <div
+            className={cn(
+              "mt-3 grid gap-3",
+              onboarding
+                ? "md:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] md:items-start md:gap-3"
+                : "mt-4",
+            )}
+          >
+          <div className={cn(
+            "rounded-[18px] border border-[#234d38] bg-[linear-gradient(120deg,#173d2f,#24543b)] p-3 shadow-[0_8px_20px_rgba(23,61,47,.16)] sm:p-3.5",
+            onboarding && "md:col-start-1 md:row-start-1",
+          )}>
+            <div className="flex items-center gap-3 text-left">
+              <div className="avatar-preview-halo grid size-[72px] shrink-0 place-items-center rounded-[22px] border border-[#d7c47f] bg-white shadow-[0_6px_18px_rgba(0,0,0,.18)]">
                 {avatarSeed ? (
                   <span key={avatarAnimationKey} className="avatar-preview-pop">
                     <Blobatar
                       name={avatarSeed}
-                      size={78}
+                      size={62}
                       background="squircle"
                       title=""
                     />
                   </span>
                 ) : (
-                  <span className="grid size-[78px] place-items-center rounded-[22px] bg-brand-soft text-brand">
-                    <UserRound className="size-9" />
+                  <span className="grid size-[62px] place-items-center rounded-[18px] bg-[#e4eee6] text-[#173d2f]">
+                    <UserRound className="size-7" />
                   </span>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d5e4d9] bg-white/80 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-brand">
-                  <Sparkles className="size-3" /> Así te verán
+                <span className="inline-flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[.15em] text-[#e0c878]">
+                  <Sparkles className="size-3" /> Tu perfil
                 </span>
-                <p className="mt-2 truncate text-lg font-extrabold tracking-[-.03em] text-[#173d2f]">
+                <p className="mt-1 truncate text-base font-extrabold tracking-[-.025em] text-white">
                   {displayName.trim() || "Tu nombre"}
                 </p>
-                <p className="mt-0.5 text-xs text-muted">
+                <p className="mt-0.5 text-[11px] text-[#d1dfd4]">
                   {avatarSeed
-                    ? "Tu perfil va tomando forma. Podés cambiarlo cuando quieras."
+                    ? "Así te verán en el sistema."
                     : "Elegí un avatar para continuar."}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className={cn(
+            "rounded-[18px] border border-[#cbd8c8] bg-[#eef3eb] p-3 sm:p-4",
+            onboarding && "md:col-start-2 md:row-span-3 md:row-start-1",
+          )}>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <Label>Elegí tu avatar</Label>
-                <p className="mt-1 text-xs text-muted">
-                  Elegí uno de estos estilos o descubrí otros.
+                <p className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[.16em] text-[#765e25]">
+                  <span className="size-1.5 rounded-full bg-[#a88327]" />
+                  Personalizá tu cuenta
+                </p>
+                <Label className="mt-0.5 block text-sm font-extrabold tracking-[-.02em] text-[#173d2f]">
+                  Elegí tu avatar
+                </Label>
+                <p className="mt-0.5 text-[11px] text-[#536357]">
+                  Seleccioná un estilo o descubrí otros.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={showMoreAvatars}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#d6e3d9] bg-white px-3 text-xs font-bold text-brand transition hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_6px_16px_rgba(23,61,47,.1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-[#bdcbb8] bg-white px-2.5 text-[11px] font-extrabold text-[#244b33] shadow-sm transition hover:-translate-y-0.5 hover:border-[#9b7924] hover:shadow-[0_6px_16px_rgba(23,61,47,.14)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 <Dices className="size-4" />
                 Ver otros estilos
               </button>
             </div>
-            <div className="mt-3 grid grid-cols-4 gap-2.5 sm:grid-cols-6 sm:gap-3">
+            <div className="mt-3 grid grid-cols-4 gap-2">
               {avatarOptions.map((seed, index) => {
                 const selected = avatarSeed === seed;
                 return (
@@ -236,37 +259,43 @@ function ProfileForm({
                     aria-pressed={selected}
                     onClick={() => chooseAvatar(seed)}
                     className={cn(
-                      "avatar-option group relative flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-2xl border bg-white p-2 transition duration-200 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(23,61,47,.1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                      "avatar-option group relative flex min-h-[76px] flex-col items-center justify-center gap-0.5 rounded-xl border bg-white p-1.5 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_16px_rgba(23,61,47,.14)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
                       selected
-                        ? "border-brand bg-[#f3f8f4] shadow-[0_0_0_2px_rgba(23,61,47,.12)]"
-                        : "border-[#e3eae4] hover:border-[#a6c3b1]",
+                        ? "border-[#9b7924] bg-[#fbf8ec] shadow-[0_0_0_2px_rgba(155,121,36,.2),0_6px_14px_rgba(23,61,47,.1)]"
+                        : "border-[#cbd8c8] hover:border-[#527859]",
                     )}
                   >
                     <Blobatar
                       name={seed}
-                      size={58}
+                      size={48}
                       background="squircle"
                       title=""
                     />
-                    <span className="text-[9px] font-bold tracking-[.04em] text-muted">
+                    <span className={cn("text-[8px] font-extrabold tracking-[.05em]", selected ? "text-[#765e25]" : "text-[#536357]")}>
                       ESTILO {String(index + 1).padStart(2, "0")}
                     </span>
                     {selected && (
-                      <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-brand text-white shadow-sm">
-                        <Check className="size-3" strokeWidth={3} />
+                      <span className="absolute right-1 top-1 grid size-4 place-items-center rounded-full bg-[#173d2f] text-white shadow-sm ring-1 ring-[#d7c47f]">
+                        <Check className="size-2.5" strokeWidth={3} />
                       </span>
                     )}
                   </button>
                 );
               })}
             </div>
-            <p className="mt-3 text-[11px] leading-5 text-muted">
-              Los avatares se generan localmente con Blobatar; no subimos una
-              foto personal. Tu elección queda guardada en tu cuenta.
+            <p className="mt-2 text-[10px] leading-4 text-[#536357]">
+              {onboarding
+                ? "Generados con Blobatar, sin subir fotos personales."
+                : "Los avatares se generan localmente con Blobatar; no subimos una foto personal. Tu elección queda guardada en tu cuenta."}
             </p>
           </div>
 
-          <div className="mt-7 grid gap-5 sm:grid-cols-2">
+          <div className={cn(
+            "grid gap-4 sm:grid-cols-2",
+            onboarding
+              ? "md:col-start-1 md:row-start-2 md:grid-cols-1"
+              : "mt-5",
+          )}>
             <div>
               <Label htmlFor="display-name">Nombre visible</Label>
               <Input
@@ -283,7 +312,12 @@ function ProfileForm({
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className={cn(
+            "flex flex-wrap items-center gap-3",
+            onboarding
+              ? "md:col-start-1 md:row-start-3"
+              : "mt-6",
+          )}>
             <Button
               type="submit"
               disabled={saving || !displayName.trim() || !avatarSeed}
@@ -299,6 +333,7 @@ function ProfileForm({
                 {message}
               </p>
             )}
+          </div>
           </div>
         </form>
 

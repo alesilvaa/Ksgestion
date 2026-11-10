@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
+  Building2,
   FileSpreadsheet,
+  LoaderCircle,
   LayoutDashboard,
   Menu,
   Plus,
@@ -104,29 +107,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-[272px] -translate-x-full flex-col border-r border-white/10 bg-[#103425] p-4 transition-transform lg:sticky lg:top-0 lg:h-screen lg:w-auto lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-[272px] -translate-x-full flex-col overflow-y-auto border-r border-white/10 bg-[radial-gradient(ellipse_at_top_left,rgba(74,117,81,.28),transparent_48%),linear-gradient(180deg,#103425,#0c2a1e)] p-4 transition-transform lg:sticky lg:top-0 lg:h-screen lg:w-auto lg:translate-x-0",
           mobileOpen && "translate-x-0",
         )}
       >
-        <div className="flex h-16 items-center justify-between px-2">
+        <div className="flex min-h-16 items-center justify-between border-b border-white/10 px-2 pb-4">
           <Link
             href="/"
             className="flex items-center gap-3"
             onClick={() => setMobileOpen(false)}
           >
-            <span className="grid size-10 place-items-center rounded-[14px] bg-white text-base font-extrabold text-[#173d2f] shadow-[0_6px_16px_rgba(0,0,0,.15)]">
+            <span className="grid size-11 place-items-center rounded-[15px] border border-[#ddce9b] bg-[#f4f2e7] text-base font-black tracking-[-.08em] text-[#173d2f] shadow-[0_7px_18px_rgba(0,0,0,.2)]">
               KS
             </span>
             <span>
-              <span className="block text-[15px] font-bold tracking-[-.02em] text-white">
+              <span className="block text-[15px] font-extrabold tracking-[-.03em] text-white">
                 {appConfig.productName}
               </span>
-              <span className="block text-[11px] font-medium text-white/55">
+              <span className="mt-0.5 block text-[10px] font-semibold text-[#d4c27e]">
                 {appConfig.productDescription}
               </span>
             </span>
           </Link>
           <button
+            aria-label="Cerrar menú"
             className="grid size-9 place-items-center rounded-lg text-white/75 hover:bg-white/10 lg:hidden"
             onClick={() => setMobileOpen(false)}
           >
@@ -134,63 +138,100 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <nav className="mt-7 space-y-1" aria-label="Navegación principal">
+        <nav className="mt-5 space-y-1.5" aria-label="Navegación principal">
+          <p className="mb-2 px-3 text-[9px] font-extrabold uppercase tracking-[.2em] text-white/40">
+            Menú principal
+          </p>
           {visibleNavItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-white/65 transition hover:bg-white/[.08] hover:text-white",
-                  active && "bg-white/[.12] font-semibold text-white",
+                  "group relative flex h-11 items-center gap-3 overflow-hidden rounded-xl px-3 text-[13px] font-semibold text-white/65 transition duration-200 hover:bg-white/[.08] hover:text-white",
+                  active &&
+                    "border border-[#d9c77f]/60 bg-[linear-gradient(100deg,#f3f0e3,#e5eee5)] font-extrabold text-[#173d2f] shadow-[0_5px_16px_rgba(0,0,0,.14)] hover:bg-[linear-gradient(100deg,#f3f0e3,#e5eee5)] hover:text-[#173d2f]",
                 )}
               >
+                {active && (
+                  <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-[#a78736]" />
+                )}
                 <item.icon
-                  className="size-[18px]"
+                  className={cn(
+                    "size-[18px] transition-colors",
+                    active ? "text-[#9b7924]" : "text-white/55 group-hover:text-[#d7c47f]",
+                  )}
                   strokeWidth={active ? 2.2 : 1.8}
                 />
                 {item.label}
+                {active && (
+                  <span className="ml-auto size-1.5 rounded-full bg-[#b89b53] shadow-[0_0_0_3px_rgba(184,155,83,.15)]" />
+                )}
               </Link>
             );
           })}
         </nav>
 
         {profile?.isPlatformAdmin && (
-          <div className="mt-5 flex items-center gap-2 rounded-xl border border-[#8fceb2]/20 bg-[#8fceb2]/10 px-3 py-2.5 text-[#c6ead5]">
+          <div className="mt-5 flex items-center gap-2 rounded-xl border border-[#d7c47f]/35 bg-[#d7c47f]/10 px-3 py-2.5 text-[#f0dfaa]">
             <ShieldCheck className="size-4 shrink-0" />
-            <span className="text-[11px] font-extrabold uppercase tracking-[.12em]">Superadministrador</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-[.1em]">Superadministrador</span>
           </div>
         )}
 
-        <div className="mt-auto rounded-2xl border border-white/10 bg-white/[.06] p-3.5">
-          <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.09em] text-[#b8dbc5]">
-            <span className="size-1.5 rounded-full bg-[#8fceb2]" />
+        <section className="mt-auto rounded-2xl border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.035))] p-3.5 shadow-[0_12px_28px_rgba(0,0,0,.12)]">
+          <div className="flex items-center gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#d7c47f]/25 bg-[#d7c47f]/10 text-[#e5d28e]">
+              <Building2 className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[#d9c77f]">
+                {dataMode === "loading" ? "Conectando al espacio" : "Tu espacio"}
+              </p>
+              <p className="mt-0.5 truncate text-xs font-bold text-white">
+                {workspaceName ?? "Espacio de gestión"}
+              </p>
+            </div>
+          </div>
+          <div
+            className="mt-3 border-t border-white/10 pt-3"
+            role={dataMode === "loading" ? "status" : undefined}
+            aria-live={dataMode === "loading" ? "polite" : undefined}
+          >
+          <div className="mb-1.5 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.1em] text-white/75">
+            {dataMode === "loading" ? (
+              <LoaderCircle className="size-3.5 animate-spin text-[#e0c878]" />
+            ) : (
+              <span className="size-1.5 rounded-full bg-[#a8c995] shadow-[0_0_0_3px_rgba(168,201,149,.12)]" />
+            )}
             {dataMode === "supabase"
-              ? "Espacio conectado"
+              ? "Conexión segura"
               : dataMode === "loading"
-                ? "Verificando acceso"
+                ? "Cargando tus datos"
                 : dataMode === "unassigned"
-                  ? "Sin espacio asignado"
+                  ? "Acceso pendiente"
                   : "Error de conexión"}
           </div>
-          <p className="text-xs leading-5 text-white/65">
+          <p className="text-[11px] leading-[1.65] text-white/65">
             {dataMode === "supabase"
-              ? `${workspaceName ?? "Tu espacio"} · Tus datos se guardan de forma segura.`
+              ? "Tus registros están guardados y sincronizados."
               : dataMode === "loading"
-                ? "Verificando tu espacio y permisos…"
+                ? "Validamos tu sesión y recuperamos los registros guardados."
                 : dataMode === "unassigned"
                   ? "Tu usuario todavía no pertenece a un espacio."
                   : "No se pudieron cargar los datos del espacio."}
           </p>
-        </div>
+          </div>
+        </section>
         <button
-          className="mt-3 flex items-center gap-3 rounded-xl p-2.5 text-left text-white hover:bg-white/[.08]"
+          className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.045] p-2.5 text-left text-white transition hover:border-white/20 hover:bg-white/[.09]"
           onClick={signOut}
           title="Cerrar sesión"
         >
-          <span className="size-8 shrink-0 overflow-hidden rounded-xl bg-white/10">
+          <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[#d7c47f]/35 bg-[#f1f2e8] shadow-sm">
             {profile ? (
               <Blobatar
                 name={profile.avatarSeed}
@@ -201,15 +242,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs font-semibold">
+            <span className="block truncate text-xs font-extrabold">
               {profile?.displayName ?? userEmail ?? "Sesión activa"}
             </span>
-            <span className="block truncate text-[11px] text-white/55">
-              Cerrar sesión
+            <span className="mt-0.5 block truncate text-[10px] font-semibold text-white/55">
+              {profile?.isPlatformAdmin ? "Superadministrador" : "Mi cuenta · Cerrar sesión"}
             </span>
           </span>
-          <LogOut className="size-4 text-white/55" />
+          <LogOut className="size-4 text-[#d7c47f]" />
         </button>
+
+        <footer className="mt-3 flex items-center gap-2.5 border-t border-white/10 px-1 pt-3 pb-1">
+          <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-white p-1.5 shadow-sm">
+            <Image
+              src="/brand/manageopy-mark.png"
+              alt=""
+              width={26}
+              height={26}
+              className="size-full object-contain"
+            />
+          </span>
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[8px] font-extrabold uppercase tracking-[.18em] text-white/45">
+              Desarrollado por
+            </span>
+            <span className="mt-0.5 block truncate text-xs font-extrabold tracking-[-.02em] text-white">
+              {appConfig.developerName} <span className="text-[#d7c47f]">↗</span>
+            </span>
+          </span>
+          <span className="ml-auto rounded-md border border-white/10 bg-white/[.07] px-1.5 py-1 text-[9px] font-bold text-white/60">
+            v{appConfig.version}
+          </span>
+        </footer>
       </aside>
 
       <div className="min-w-0">

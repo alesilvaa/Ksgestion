@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { PremiumLoader } from "@/components/layout/page-loading";
 import { ProfileSettings } from "@/features/profile/profile-settings";
 
 async function OnboardingContent() {
@@ -9,7 +10,14 @@ async function OnboardingContent() {
 
 export default function OnboardingPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-muted">Cargando tu perfil…</p>}>
+    <Suspense
+      fallback={
+        <PremiumLoader
+          label="Cargando tu perfil…"
+          detail="Estamos trayendo tu nombre y correo para que completes tu cuenta."
+        />
+      }
+    >
       <OnboardingContent />
     </Suspense>
   );

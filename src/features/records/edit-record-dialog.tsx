@@ -77,7 +77,7 @@ function EditRecordForm({
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[#102119]/55 backdrop-blur-[3px] data-[state=open]:animate-in" />
-        <Dialog.Content className="fixed inset-x-3 bottom-3 top-3 z-50 mx-auto flex max-w-[680px] flex-col overflow-hidden rounded-[26px] border border-[#c9b77d] bg-[#fbfcfa] shadow-[0_28px_90px_rgba(5,26,17,.32)] outline-none sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:max-h-[92vh] sm:w-[calc(100%-32px)] sm:-translate-y-1/2">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[min(92dvh,760px)] w-[calc(100%-24px)] max-w-[680px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[26px] border border-[#c9b77d] bg-[#fbfcfa] shadow-[0_28px_90px_rgba(5,26,17,.32)] outline-none sm:w-[calc(100%-32px)]">
           <div className="relative flex items-start justify-between overflow-hidden border-b border-white/10 bg-[#173d2f] px-5 py-5 sm:px-7">
             <span
               aria-hidden="true"
