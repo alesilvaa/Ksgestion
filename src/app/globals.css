@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f1f4f1;
+  --foreground: #17201b;
+  --surface: #ffffff;
+  --surface-subtle: #f6f8f6;
+  --border: #e0e7e2;
+  --muted: #6b756e;
+  --primary: #173d2f;
+  --primary-hover: #0e3023;
+  --primary-soft: #e7f0eb;
+  --accent: #d3a641;
+  --danger: #b5473d;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-subtle: var(--surface-subtle);
+  --color-line: var(--border);
+  --color-muted: var(--muted);
+  --color-brand: var(--primary);
+  --color-brand-hover: var(--primary-hover);
+  --color-brand-soft: var(--primary-soft);
+  --color-gold: var(--accent);
+  --color-danger: var(--danger);
+  --font-sans:
+    "Montserrat Variable", Montserrat, ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    "Montserrat Variable", Montserrat, ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings:
+    "tnum" 1,
+    "cv02" 1;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  outline-color: var(--primary);
+}
+
+::selection {
+  background: #cde7dc;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-enter {
+  animation: slide-up 260ms ease-out both;
+}
+
+.manageopy-login {
+  background:
+    radial-gradient(
+      ellipse 45% 55% at 84% 7%,
+      rgba(36, 87, 63, 0.62),
+      transparent 75%
+    ),
+    radial-gradient(
+      ellipse 38% 48% at 4% 102%,
+      rgba(33, 83, 60, 0.58),
+      transparent 76%
+    ),
+    linear-gradient(135deg, #071a12 0%, #0c2b1e 52%, #071a12 100%);
+}
+
+.manageopy-orb {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  background: rgba(41, 100, 72, 0.16);
+}
+
+.manageopy-orb-one {
+  right: -8vw;
+  top: -26vw;
+  height: 64vw;
+  width: 64vw;
+}
+
+.manageopy-orb-two {
+  bottom: -36vw;
+  left: -20vw;
+  height: 54vw;
+  width: 54vw;
+}
+
+.onboarding-shell {
+  background: linear-gradient(145deg, #eaf0eb 0%, #f5f7f5 55%, #e8efea 100%);
+}
+
+@media (max-height: 720px) {
+  .manageopy-login-card {
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .manageopy-login-mark {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.75rem;
+  }
+
+  .manageopy-login-form {
+    margin-top: 1.25rem;
+    gap: 0.75rem;
+  }
+
+  .manageopy-login-form > * + * {
+    margin-top: 0.75rem !important;
+  }
+
+  .manageopy-login-field {
+    height: 3.25rem;
+  }
+
+  .manageopy-login-footer-gap {
+    margin-top: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
