@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarDays,
-  Download,
+  FileDown,
   Pencil,
   FileUp,
   ReceiptText,
@@ -21,12 +21,14 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
 import * as React from "react";
+import { jsPDF } from "jspdf";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/field";
 import { useDemoApp } from "./demo-app-provider";
 import type { RecordItem } from "./types";
-import { formatPyg, monthNames } from "@/lib/utils";
+import { formatDate, formatPyg, monthNames } from "@/lib/utils";
 import { WorkbookImport } from "./workbook-import";
 import { EditRecordDialog } from "./edit-record-dialog";
 
@@ -39,6 +41,8 @@ export function RecordsPage() {
     categories,
     movementTypes,
     importWorkbook,
+    profile,
+    workspaceName,
   } = useDemoApp();
   const [search, setSearch] = React.useState("");
   const [month, setMonth] = React.useState("latest");
@@ -50,6 +54,9 @@ export function RecordsPage() {
   const [editingRecord, setEditingRecord] = React.useState<RecordItem | null>(
     null,
   );
+  const [exportOpen, setExportOpen] = React.useState(false);
+  const [exportMonth, setExportMonth] = React.useState("01");
+  const [exportYear, setExportYear] = React.useState("2026");
   const latestDatedRecord = records
     .flatMap((record) => (record.date ? [record.date] : []))
     .sort()
@@ -74,22 +81,23 @@ export function RecordsPage() {
   }, []);
 
   const filtered = records.filter((record) => {
-    const matchesPeriod =
-      activeMonth === "undated"
-        ? !record.date
-        : record.date
-          ? (activeYear === "all" ||
-              record.date.startsWith(`${activeYear}-`)) &&
-            (activeMonth === "all" || record.date.slice(5, 7) === activeMonth)
-          : activeMonth === "all"
-            ? activeYear === "all"
-            : monthNames.findIndex(
-                (name) =>
-                  normalizeMonth(name) ===
-                  normalizeMonth(record.sourceSheet ?? ""),
-              ) +
-                1 ===
-              Number(activeMonth);
+    const yearMatches =
+      activeYear === "all" ||
+      record.sourceYear == null ||
+      String(record.sourceYear) === activeYear;
+    const matchesPeriod = !record.date
+      ? yearMatches &&
+        (activeMonth === "all" ||
+          activeMonth === "undated" ||
+          monthNames.findIndex(
+            (name) =>
+              normalizeMonth(name) === normalizeMonth(record.sourceSheet ?? ""),
+          ) +
+            1 ===
+            Number(activeMonth))
+      : activeMonth !== "undated" &&
+        (activeYear === "all" || record.date.startsWith(`${activeYear}-`)) &&
+        (activeMonth === "all" || record.date.slice(5, 7) === activeMonth);
     return (
       matchesPeriod &&
       record.description.toLowerCase().includes(search.toLowerCase()) &&
@@ -137,8 +145,21 @@ export function RecordsPage() {
             <p className="font-semibold leading-5 text-foreground">
               {row.original.description}
             </p>
-            {(row.original.category || row.original.reference) && (
+            {(row.original.category || row.original.reference || row.original.movementTypeName) && (
               <p className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-muted">
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold"
+                  style={{
+                    color: `color-mix(in srgb, ${row.original.movementTypeColor} 78%, #10251b)`,
+                    backgroundColor: `color-mix(in srgb, ${row.original.movementTypeColor} 16%, white)`,
+                  }}
+                >
+                  <span
+                    className="size-1.5 rounded-full"
+                    style={{ backgroundColor: row.original.movementTypeColor }}
+                  />
+                  {row.original.movementTypeName}
+                </span>
                 {row.original.category && (
                   <span className="rounded-full bg-[#edf3ee] px-2 py-0.5 font-semibold text-[#53675a]">
                     {row.original.category}
@@ -166,8 +187,9 @@ export function RecordsPage() {
             <span
               className="inline-flex min-w-36 justify-end rounded-lg px-2.5 py-1.5 whitespace-nowrap text-right font-extrabold tabular-nums"
               style={{
-                color: type.color,
-                backgroundColor: `color-mix(in srgb, ${type.color} 12%, white)`,
+                color: `color-mix(in srgb, ${type.color} 78%, #10251b)`,
+                backgroundColor: `color-mix(in srgb, ${type.color} 18%, white)`,
+                boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${type.color} 24%, white)`,
               }}
             >
               {formatPyg(row.original.amount)}
@@ -239,11 +261,36 @@ export function RecordsPage() {
   const availableYears = Array.from(
     new Set([
       currentPeriod.year,
-      ...records.flatMap((record) =>
-        record.date ? [record.date.slice(0, 4)] : [],
-      ),
+      ...records.flatMap((record) => record.date ? [record.date.slice(0, 4)] : []),
+      ...records.flatMap((record) => record.sourceYear ? [String(record.sourceYear)] : []),
     ]),
   ).sort((left, right) => Number(right) - Number(left));
+  const exportRecords = records
+    .filter((record) =>
+      recordBelongsToPeriod(record, exportMonth, exportYear),
+    )
+    .sort((left, right) => (left.date ?? "9999").localeCompare(right.date ?? "9999"));
+
+  function openExport() {
+    setExportMonth(
+      /^\d{2}$/.test(activeMonth) ? activeMonth : currentPeriod.month,
+    );
+    setExportYear(/^\d{4}$/.test(activeYear) ? activeYear : currentPeriod.year);
+    setExportOpen(true);
+  }
+
+  function generatePdf() {
+    if (exportRecords.length === 0) return;
+    exportRecordsPdf({
+      records: exportRecords,
+      month: exportMonth,
+      year: exportYear,
+      movementTypes,
+      subscriberName: profile?.displayName || profile?.email || "Usuario",
+      workspaceName: workspaceName ?? "Mi espacio",
+    });
+    setExportOpen(false);
+  }
 
   function openImport() {
     setImportSummary(null);
@@ -299,9 +346,9 @@ export function RecordsPage() {
             <FileUp className="size-4" />
             Importar Excel
           </Button>
-          <Button variant="secondary" onClick={() => exportCsv(filtered)}>
-            <Download className="size-4" />
-            Exportar CSV
+          <Button variant="secondary" onClick={openExport}>
+            <FileDown className="size-4" />
+            Exportar PDF
           </Button>
           <Button
             onClick={() => setDialogOpen(true)}
@@ -312,6 +359,101 @@ export function RecordsPage() {
           </Button>
         </div>
       </section>
+
+      <Dialog.Root open={exportOpen} onOpenChange={setExportOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-[#102119]/60 backdrop-blur-[3px] data-[state=open]:animate-in" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-24px)] max-w-[470px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[26px] border border-[#c9b77d] bg-[#fbfcfa] shadow-[0_28px_90px_rgba(5,26,17,.32)] outline-none">
+            <div className="bg-[#173d2f] px-6 py-5 text-white">
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 place-items-center rounded-2xl bg-[#d3bd77]/15 text-[#e4cf8e]">
+                  <FileDown className="size-5" />
+                </span>
+                <div>
+                  <Dialog.Title className="text-lg font-extrabold tracking-[-.03em]">
+                    Preparar reporte PDF
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-0.5 text-xs text-white/65">
+                    Elegí el mes y año que querés incluir.
+                  </Dialog.Description>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-5 p-6">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-2 text-xs font-bold text-[#4f6255]">
+                  Mes
+                  <Select
+                    value={exportMonth}
+                    onChange={(event) => setExportMonth(event.target.value)}
+                  >
+                    {monthNames.map((name, index) => (
+                      <option key={name} value={String(index + 1).padStart(2, "0")}>
+                        {name}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label className="space-y-2 text-xs font-bold text-[#4f6255]">
+                  Año
+                  <Select
+                    value={exportYear}
+                    onChange={(event) => setExportYear(event.target.value)}
+                  >
+                    {availableYears.map((availableYear) => (
+                      <option key={availableYear} value={availableYear}>
+                        {availableYear}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl border border-[#dce8dd] bg-[#eff5ee] px-4 py-3.5">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[.1em] text-[#65796a]">
+                    Movimientos incluidos
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-[#829087]">
+                    {monthNames[Number(exportMonth) - 1]} {exportYear}
+                  </p>
+                </div>
+                <span className="text-xl font-extrabold tabular-nums text-[#173d2f]">
+                  {exportRecords.length}
+                </span>
+              </div>
+              {exportRecords.length > 0 && (
+                <p className="text-xs leading-5 text-[#748177]">
+                  El reporte incluirá los totales y figurará como suscripto por{" "}
+                  <strong className="text-[#315b3c]">
+                    {profile?.displayName || profile?.email || "Usuario"}
+                  </strong>
+                  .
+                </p>
+              )}
+              {exportRecords.length === 0 && (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs font-medium leading-5 text-amber-900">
+                  No hay registros para ese período. Elegí otro mes o año.
+                </p>
+              )}
+              <div className="flex justify-end gap-2 border-t border-[#e5ebe4] pt-4">
+                <Dialog.Close asChild>
+                  <Button type="button" variant="secondary">
+                    Cancelar
+                  </Button>
+                </Dialog.Close>
+                <Button
+                  type="button"
+                  onClick={generatePdf}
+                  disabled={exportRecords.length === 0}
+                >
+                  <FileDown className="size-4" />
+                  Generar PDF
+                </Button>
+              </div>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       {importSummary && (
         <p
@@ -472,22 +614,28 @@ export function RecordsPage() {
               key={type.id}
               className="relative overflow-hidden rounded-2xl border p-4 sm:p-5"
               style={{
-                borderColor: `color-mix(in srgb, ${type.color} 24%, white)`,
-                backgroundColor: `color-mix(in srgb, ${type.color} 9%, white)`,
+                borderColor: `color-mix(in srgb, ${type.color} 38%, #dfe7df)`,
+                background: `linear-gradient(135deg, color-mix(in srgb, ${type.color} 13%, white), white 78%)`,
               }}
             >
               <span
                 aria-hidden="true"
-                className="absolute -right-4 -top-5 grid size-20 place-items-center rounded-full bg-white/55 text-3xl font-black"
+                className="absolute inset-x-0 top-0 h-1"
+                style={{ backgroundColor: type.color }}
+              />
+              <span
+                aria-hidden="true"
+                className="absolute -right-4 -top-5 grid size-20 place-items-center rounded-full text-3xl font-black"
                 style={{
-                  color: `color-mix(in srgb, ${type.color} 45%, white)`,
+                  color: `color-mix(in srgb, ${type.color} 25%, white)`,
+                  backgroundColor: `color-mix(in srgb, ${type.color} 10%, white)`,
                 }}
               >
                 {type.name.slice(0, 1).toUpperCase()}
               </span>
               <p
                 className="relative flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.11em]"
-                style={{ color: type.color }}
+                style={{ color: `color-mix(in srgb, ${type.color} 78%, #10251b)` }}
               >
                 <span
                   className="size-1.5 rounded-full"
@@ -497,7 +645,7 @@ export function RecordsPage() {
               </p>
               <p
                 className="relative mt-3 text-xl font-extrabold tracking-[-.035em] sm:text-[1.35rem]"
-                style={{ color: type.color }}
+                style={{ color: `color-mix(in srgb, ${type.color} 82%, #10251b)` }}
               >
                 {formatPyg(type.total)}
               </p>
@@ -544,8 +692,9 @@ export function RecordsPage() {
                         style={
                           type
                             ? {
-                                backgroundColor: `color-mix(in srgb, ${type.color} 15%, white)`,
-                                color: type.color,
+                                backgroundColor: `color-mix(in srgb, ${type.color} 82%, #10251b)`,
+                                color: "white",
+                                borderColor: `color-mix(in srgb, ${type.color} 65%, #10251b)`,
                               }
                             : undefined
                         }
@@ -574,7 +723,7 @@ export function RecordsPage() {
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className={`group transition-colors ${row.index % 2 ? "bg-[#f3f6f1]" : "bg-white"} hover:bg-[#eef5ed]`}
+                  className={`group transition-colors ${row.index % 2 ? "bg-[#f6f8f5]" : "bg-white"} hover:bg-[#eef5ed]`}
                   style={{
                     borderLeft: `4px solid ${row.original.movementTypeColor}`,
                   }}
@@ -585,11 +734,11 @@ export function RecordsPage() {
                       style={
                         cellIndex >= 2 && cellIndex < movementTypes.length + 2
                           ? {
-                              backgroundColor: `color-mix(in srgb, ${movementTypes[cellIndex - 2]?.color ?? "#315b3c"} ${row.index % 2 ? "13%" : "7%"}, white)`,
+                              backgroundColor: `color-mix(in srgb, ${movementTypes[cellIndex - 2]?.color ?? "#315b3c"} ${row.original.movementTypeId === movementTypes[cellIndex - 2]?.id ? "11%" : "4%"}, white)`,
                             }
                           : undefined
                       }
-                      className="border-b border-r border-[#dce4dc] px-5 py-3.5 align-middle last:border-r-0 group-hover:bg-[#eef5ed]"
+                      className={`border-b border-r border-[#dce4dc] px-5 py-3.5 align-middle last:border-r-0 ${cellIndex >= 2 && cellIndex < movementTypes.length + 2 ? "group-hover:!bg-[#eaf2e9]" : "group-hover:bg-[#eef5ed]"}`}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -602,7 +751,7 @@ export function RecordsPage() {
             </tbody>
             {filtered.length > 0 && (
               <tfoot>
-                <tr className="bg-[#f1f5f0] font-extrabold text-[#344b3c]">
+                <tr className="bg-[#edf2ec] font-extrabold text-[#344b3c]">
                   <td
                     colSpan={2}
                     className="border-t-2 border-[#d5e1d6] px-5 py-4 uppercase tracking-[.08em]"
@@ -613,7 +762,10 @@ export function RecordsPage() {
                     <td
                       key={type.id}
                       className="border-t-2 border-[#d5e1d6] px-5 py-4 text-right tabular-nums"
-                      style={{ color: type.color }}
+                      style={{
+                        color: `color-mix(in srgb, ${type.color} 82%, #10251b)`,
+                        backgroundColor: `color-mix(in srgb, ${type.color} 12%, white)`,
+                      }}
                     >
                       {formatPyg(type.total)}
                     </td>
@@ -728,28 +880,288 @@ function shiftMonth(
   setYear(String(date.getFullYear()));
 }
 
-function exportCsv(records: RecordItem[]) {
-  const rows = [
-    ["Fecha", "Descripción", "Tipo de movimiento", "Categoría", "Monto PYG"],
-    ...records.map((r) => [
-      r.date ?? "",
-      r.description,
-      r.movementTypeName,
-      r.category ?? "",
-      String(r.amount),
-    ]),
-  ];
-  const csv = rows
-    .map((row) =>
-      row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(","),
-    )
-    .join("\n");
-  const url = URL.createObjectURL(
-    new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }),
+function recordBelongsToPeriod(record: RecordItem, month: string, year: string) {
+  if (record.date) return record.date.startsWith(`${year}-${month}-`);
+  if (record.sourceYear != null && record.sourceYear !== Number(year)) return false;
+  const sourceMonth = monthNames.findIndex(
+    (name) => normalizeMonth(name) === normalizeMonth(record.sourceSheet ?? ""),
   );
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "registros.csv";
-  anchor.click();
-  URL.revokeObjectURL(url);
+  return sourceMonth === Number(month) - 1;
+}
+
+function exportRecordsPdf({
+  records,
+  month,
+  year,
+  movementTypes,
+  subscriberName,
+  workspaceName,
+}: {
+  records: RecordItem[];
+  month: string;
+  year: string;
+  movementTypes: Array<{ id: string; name: string; color: string }>;
+  subscriberName: string;
+  workspaceName: string;
+}) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const pageWidth = 297;
+  const pageHeight = 210;
+  const margin = 16;
+  const columnWidths = [25, 88, 43, 52, 57];
+  const columnTitles = ["FECHA", "DESCRIPCIÓN", "TIPO DE MOVIMIENTO", "CATEGORÍA / REF.", "MONTO PYG"];
+  const monthLabel = monthNames[Number(month) - 1] ?? month;
+  const periodLabel = `${monthLabel} ${year}`;
+  const issuedAt = new Intl.DateTimeFormat("es-PY", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "America/Asuncion",
+  }).format(new Date());
+  const typeTotals = movementTypes
+    .map((type) => ({
+      ...type,
+      total: records
+        .filter((record) => record.movementTypeId === type.id)
+        .reduce((sum, record) => sum + record.amount, 0),
+    }))
+    .filter((type) => type.total > 0);
+  const grandTotal = records.reduce((sum, record) => sum + record.amount, 0);
+
+  function drawBrandHeader(title: string, subtitle?: string) {
+    doc.setFillColor(23, 61, 47);
+    doc.rect(0, 0, pageWidth, 29, "F");
+    doc.setFillColor(189, 163, 91);
+    doc.rect(0, 28, pageWidth, 1.2, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(224, 201, 130);
+    doc.text("KS · GESTIÓN FINANCIERA", margin, 9);
+    doc.setFontSize(18);
+    doc.setTextColor(255, 255, 255);
+    doc.text(title, margin, 19);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text(periodLabel, pageWidth - margin, 14, { align: "right" });
+    if (subtitle) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(221, 232, 222);
+      doc.text(subtitle, pageWidth - margin, 21, { align: "right" });
+    }
+  }
+
+  function drawTableHeader(y: number) {
+    const totalWidth = columnWidths.reduce((sum, width) => sum + width, 0);
+    doc.setFillColor(231, 239, 229);
+    doc.roundedRect(margin, y, totalWidth, 9, 1.5, 1.5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(54, 78, 61);
+    let x = margin;
+    columnTitles.forEach((title, index) => {
+      const rightAligned = index === columnTitles.length - 1;
+      doc.text(title, rightAligned ? x + columnWidths[index] - 3 : x + 3, y + 5.8, {
+        align: rightAligned ? "right" : "left",
+      });
+      x += columnWidths[index];
+    });
+    return y + 9;
+  }
+
+  function drawContinuationHeader() {
+    drawBrandHeader("REPORTE DE MOVIMIENTOS", workspaceName);
+    return drawTableHeader(34);
+  }
+
+  drawBrandHeader("REPORTE DE MOVIMIENTOS", workspaceName);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(98, 116, 103);
+  doc.text(`Período: ${periodLabel}`, margin, 36);
+  doc.text(`${records.length} movimientos`, pageWidth - margin, 36, {
+    align: "right",
+  });
+
+  doc.setFillColor(241, 246, 240);
+  doc.roundedRect(margin, 40, pageWidth - margin * 2, 18, 2, 2, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(96, 118, 102);
+  doc.text("TOTAL DEL PERÍODO", margin + 5, 47);
+  doc.setFontSize(16);
+  doc.setTextColor(23, 61, 47);
+  doc.text(formatPyg(grandTotal), margin + 5, 54);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(103, 121, 108);
+  doc.text(`Espacio: ${workspaceName}`, pageWidth - margin - 5, 48, {
+    align: "right",
+  });
+  doc.text(`Suscriptor: ${subscriberName}`, pageWidth - margin - 5, 53,
+    { align: "right" },
+  );
+
+  let y = drawTableHeader(63);
+  const tableWidth = columnWidths.reduce((sum, width) => sum + width, 0);
+  records.forEach((record, index) => {
+    const descriptionLines = doc.splitTextToSize(record.description, 82) as string[];
+    const typeLines = doc.splitTextToSize(record.movementTypeName, 37) as string[];
+    const categoryText = [record.category, record.reference && `Ref. ${record.reference}`]
+      .filter(Boolean)
+      .join(" · ") || "—";
+    const categoryLines = doc.splitTextToSize(categoryText, 47) as string[];
+    const lineCount = Math.max(descriptionLines.length, typeLines.length, categoryLines.length, 1);
+    const rowHeight = Math.max(10, lineCount * 4 + 4);
+    if (y + rowHeight > pageHeight - 43) {
+      doc.addPage();
+      y = drawContinuationHeader();
+    }
+
+    const color = hexToRgb(record.movementTypeColor);
+    const rowBackground: [number, number, number] =
+      index % 2 === 0 ? [255, 255, 255] : [248, 250, 247];
+    doc.setFillColor(...rowBackground);
+    doc.rect(margin, y, tableWidth, rowHeight, "F");
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.rect(margin, y, 1.2, rowHeight, "F");
+    doc.setDrawColor(224, 231, 223);
+    doc.setLineWidth(0.25);
+    doc.line(margin, y + rowHeight, margin + tableWidth, y + rowHeight);
+
+    let x = margin;
+    const baseline = y + Math.max(6.5, rowHeight / 2 + 1.3);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(81, 99, 86);
+    doc.text(record.date ? formatDate(record.date) : "Sin fecha", x + 3, baseline);
+    x += columnWidths[0];
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(36, 55, 42);
+    doc.text(descriptionLines.slice(0, 3), x + 3, y + 4.5);
+    x += columnWidths[1];
+
+    const typeColor = mixRgb(color, [255, 255, 255], 0.16);
+    const darkTypeColor = mixRgb(color, [16, 37, 27], 0.78);
+    doc.setFillColor(...typeColor);
+    doc.roundedRect(x + 2, y + 2.2, columnWidths[2] - 4, rowHeight - 4.4, 1.6, 1.6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.3);
+    doc.setTextColor(...darkTypeColor);
+    doc.text(typeLines.slice(0, 2), x + 4, y + 5.5);
+    x += columnWidths[2];
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.8);
+    doc.setTextColor(91, 107, 96);
+    doc.text(categoryLines.slice(0, 3), x + 3, y + 4.5);
+    x += columnWidths[3];
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.6);
+    doc.setTextColor(...darkTypeColor);
+    doc.text(formatPyg(record.amount), x + columnWidths[4] - 3, baseline, {
+      align: "right",
+    });
+    y += rowHeight;
+  });
+
+  const summaryHeight = typeTotals.length * 6 + 17;
+  if (y + summaryHeight + 25 > pageHeight - 7) {
+    doc.addPage();
+    drawBrandHeader("RESUMEN DEL PERÍODO", workspaceName);
+    y = 36;
+  } else {
+    y += 5;
+  }
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(50, 76, 58);
+  doc.text("TOTALES POR TIPO", margin + 2, y + 3);
+  y += 7;
+  typeTotals.forEach((type) => {
+    const rgb = hexToRgb(type.color);
+    doc.setFillColor(...mixRgb(rgb, [255, 255, 255], 0.12));
+    doc.roundedRect(margin, y - 3.5, tableWidth, 5.5, 1, 1, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.6);
+    doc.setTextColor(...mixRgb(rgb, [16, 37, 27], 0.8));
+    doc.text(type.name, margin + 3, y);
+    doc.text(formatPyg(type.total), margin + tableWidth - 3, y, { align: "right" });
+    y += 6;
+  });
+  doc.setDrawColor(189, 163, 91);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, margin + tableWidth, y);
+  y += 5;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(23, 61, 47);
+  doc.text("TOTAL GENERAL", margin + 3, y);
+  doc.text(formatPyg(grandTotal), margin + tableWidth - 3, y, { align: "right" });
+  y += 8;
+
+  if (y + 20 > pageHeight - 9) {
+    doc.addPage();
+    drawBrandHeader("CONSTANCIA DEL REPORTE", periodLabel);
+    y = 48;
+  }
+  doc.setFillColor(241, 246, 240);
+  doc.roundedRect(margin, y, tableWidth, 16, 2, 2, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  doc.setTextColor(112, 129, 116);
+  doc.text("EMITIDO Y SUSCRIPTO POR", margin + 4, y + 5.5);
+  doc.setFontSize(9.5);
+  doc.setTextColor(23, 61, 47);
+  doc.text(subscriberName, margin + 4, y + 11.5);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.2);
+  doc.setTextColor(112, 129, 116);
+  doc.text(`KS Gestión · ${issuedAt}`, margin + tableWidth - 4, y + 9, {
+    align: "right",
+  });
+
+  const pageCount = doc.getNumberOfPages();
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setDrawColor(220, 229, 220);
+    doc.setLineWidth(0.25);
+    doc.line(margin, pageHeight - 6, pageWidth - margin, pageHeight - 6);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(119, 132, 122);
+    doc.text(`KS Gestión · ${subscriberName}`, margin, pageHeight - 2.5);
+    doc.text(`Página ${page} de ${pageCount}`, pageWidth - margin, pageHeight - 2.5, {
+      align: "right",
+    });
+  }
+
+  const filename = `ks-gestion-registros-${monthLabel}-${year}`
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replaceAll(" ", "-");
+  doc.save(`${filename}.pdf`);
+}
+
+function hexToRgb(color: string): [number, number, number] {
+  const match = /^#?([\da-f]{6})$/i.exec(color);
+  if (!match) return [49, 91, 60];
+  const value = match[1];
+  return [
+    Number.parseInt(value.slice(0, 2), 16),
+    Number.parseInt(value.slice(2, 4), 16),
+    Number.parseInt(value.slice(4, 6), 16),
+  ];
+}
+
+function mixRgb(
+  color: [number, number, number],
+  toward: [number, number, number],
+  amount: number,
+): [number, number, number] {
+  return color.map((value, index) =>
+    Math.round(value * amount + toward[index] * (1 - amount)),
+  ) as [number, number, number];
 }

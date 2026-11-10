@@ -30,6 +30,7 @@ export type RecordItem = {
   movementTypeName: string;
   movementTypeColor: string;
   amount: number;
+  sourceYear?: number | null;
   category?: string;
   notes?: string;
   reference?: string;

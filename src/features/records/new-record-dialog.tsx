@@ -4,14 +4,17 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowLeftRight,
+  CalendarDays,
   Check,
   ChevronDown,
+  CircleCheck,
+  CircleHelp,
   Plus,
   ReceiptText,
   X,
 } from "lucide-react";
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
@@ -54,6 +57,7 @@ export function NewRecordDialog() {
     handleSubmit,
     reset,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(schema),
@@ -61,13 +65,15 @@ export function NewRecordDialog() {
       date: "",
       movementTypeId: "",
       description: "",
-      amount: 0,
+      amount: "",
       category: "",
       notes: "",
       reference: "",
       method: "",
     },
   });
+  const amountValue = useWatch({ control, name: "amount" });
+  const numericAmount = Number(amountValue);
 
   React.useEffect(() => {
     if (dialogOpen) setValue("date", todayInAsuncion());
@@ -90,7 +96,7 @@ export function NewRecordDialog() {
         date: todayInAsuncion(),
         movementTypeId: values.movementTypeId,
         description: "",
-        amount: 0,
+        amount: "",
         category: values.category,
         notes: "",
         reference: "",
@@ -108,7 +114,7 @@ export function NewRecordDialog() {
     <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[#102119]/55 backdrop-blur-[3px] data-[state=open]:animate-in" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[min(92dvh,760px)] w-[calc(100%-24px)] max-w-[680px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[26px] border border-[#c9b77d] bg-[#fbfcfa] shadow-[0_28px_90px_rgba(5,26,17,.32)] outline-none sm:w-[calc(100%-32px)]">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[min(92dvh,820px)] w-[calc(100%-24px)] max-w-[720px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[26px] border border-[#c9b77d] bg-[#f8faf7] shadow-[0_28px_90px_rgba(5,26,17,.32)] outline-none sm:w-[calc(100%-32px)]">
           <div className="relative flex items-start justify-between overflow-hidden border-b border-white/10 bg-[#173d2f] px-5 py-5 sm:px-7">
             <span
               aria-hidden="true"
@@ -123,7 +129,7 @@ export function NewRecordDialog() {
                   Nuevo movimiento
                 </Dialog.Title>
                 <Dialog.Description className="mt-1 text-xs text-white/65">
-                  Fecha, concepto y monto. Podés completar detalles después.
+                  Cargá los datos principales y guardá el movimiento.
                 </Dialog.Description>
               </div>
             </div>
@@ -139,37 +145,18 @@ export function NewRecordDialog() {
             className="flex min-h-0 flex-1 flex-col"
             onSubmit={handleSubmit((values) => save(values))}
           >
-            <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-7">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="record-date">Fecha</Label>
-                  <Input
-                    id="record-date"
-                    type="date"
-                    autoFocus
-                    {...register("date")}
-                  />
-                  {errors.date && (
-                    <p className="mt-1.5 text-xs font-medium text-danger">
-                      {errors.date.message}
-                    </p>
-                  )}
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="record-description">Descripción</Label>
-                  <Input
-                    id="record-description"
-                    placeholder="Ej.: Pago de servicio de internet"
-                    {...register("description")}
-                  />
-                  {errors.description && (
-                    <p className="mt-1.5 text-xs font-medium text-danger">
-                      {errors.description.message}
-                    </p>
-                  )}
-                </div>
-                <div className="sm:col-span-2">
-                  <Label>Tipo de movimiento</Label>
+            <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+              <div className="mb-5 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.12em] text-[#718075]">
+                <span className="grid size-6 place-items-center rounded-full bg-[#173d2f] text-white">1</span>
+                Datos principales
+                <span className="h-px flex-1 bg-[#dfe8df]" />
+                <span className="flex items-center gap-1 font-semibold normal-case tracking-normal text-[#88948a]">
+                  <CircleHelp className="size-3.5" /> Más detalles es opcional
+                </span>
+              </div>
+              <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                <div className="order-1 sm:col-span-2">
+                  <Label className="mb-2.5">¿Qué tipo de movimiento vas a cargar?</Label>
                   <input
                     type="hidden"
                     {...register("movementTypeId")}
@@ -196,10 +183,10 @@ export function NewRecordDialog() {
                               ? `color-mix(in srgb, ${type.color} 9%, white)`
                               : undefined,
                           }}
-                          className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${selected ? "ring-2 ring-black/5" : "border-[#e0e7e2] bg-white hover:bg-[#f8fbf8]"}`}
+                          className={`relative flex min-h-[76px] items-center gap-3 rounded-2xl border p-3.5 text-left transition duration-150 ${selected ? "shadow-[0_5px_16px_rgba(20,48,30,.08)] ring-2 ring-black/[.04]" : "border-[#e0e7e2] bg-white hover:-translate-y-0.5 hover:border-[#bdcfc0] hover:shadow-sm"}`}
                         >
                           <span
-                            className="grid size-10 place-items-center rounded-xl"
+                            className="grid size-11 shrink-0 place-items-center rounded-xl"
                             style={{
                               color: type.color,
                               backgroundColor: `color-mix(in srgb, ${type.color} 14%, white)`,
@@ -211,17 +198,18 @@ export function NewRecordDialog() {
                               <ReceiptText className="size-5" />
                             )}
                           </span>
-                          <span>
+                          <span className="min-w-0 flex-1">
                             <span
                               className="block text-sm font-bold"
                               style={{ color: type.color }}
                             >
                               {type.name}
                             </span>
-                            <span className="mt-0.5 block text-[11px] text-muted">
-                              Columna propia en tu libro
+                            <span className="mt-1 block text-[10px] leading-4 text-[#718075]">
+                              Se guarda en su propia columna
                             </span>
                           </span>
+                          {selected && <CircleCheck className="ml-auto size-5 shrink-0" style={{ color: type.color }} />}
                         </button>
                       );
                     })}
@@ -232,8 +220,24 @@ export function NewRecordDialog() {
                     </p>
                   )}
                 </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="record-amount">Monto en guaraníes</Label>
+                <div className="order-2 sm:col-span-2">
+                  <Label htmlFor="record-description">Descripción del movimiento</Label>
+                  <Input
+                    id="record-description"
+                    autoFocus
+                    placeholder="Ej.: Pago de servicio de internet"
+                    className="h-12 border-[#d5dfd6] bg-white"
+                    {...register("description")}
+                  />
+                  <p className="mt-1.5 text-[10px] text-[#829087]">Usá un concepto que te ayude a reconocerlo en la lista.</p>
+                  {errors.description && (
+                    <p className="mt-1.5 text-xs font-medium text-danger">
+                      {errors.description.message}
+                    </p>
+                  )}
+                </div>
+                <div className="order-3">
+                  <Label htmlFor="record-amount">Monto del movimiento</Label>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted">
                       Gs.
@@ -243,22 +247,45 @@ export function NewRecordDialog() {
                       type="number"
                       min="1"
                       step="1"
-                      className="h-14 border-[#bfd0c1] bg-[#f2f7f1] pl-11 text-xl font-extrabold tabular-nums text-[#173d2f]"
+                      className="h-14 border-[#aebfae] bg-[#f0f6ef] pl-11 text-2xl font-extrabold tabular-nums text-[#173d2f] placeholder:text-[#a5b1a7]"
                       placeholder="0"
                       {...register("amount")}
                     />
                   </div>
+                  <p className="mt-1.5 text-[10px] text-[#829087]">En guaraníes, sin decimales.</p>
                   {errors.amount && (
                     <p className="mt-1.5 text-xs font-medium text-danger">
                       {errors.amount.message}
                     </p>
                   )}
                 </div>
+                <div className="order-4">
+                  <Label htmlFor="record-date">Fecha</Label>
+                  <div className="relative">
+                    <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#718075]" />
+                    <Input
+                      id="record-date"
+                      type="date"
+                      className="h-14 bg-white pl-10 font-semibold text-[#294634]"
+                      {...register("date")}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-[#829087]">Se propone la fecha de hoy.</p>
+                  {errors.date && (
+                    <p className="mt-1.5 text-xs font-medium text-danger">
+                      {errors.date.message}
+                    </p>
+                  )}
+                </div>
+                <div className="order-5 flex flex-col justify-between gap-2 rounded-2xl border border-[#dce7de] bg-white px-4 py-3 sm:col-span-2 sm:flex-row sm:items-center">
+                  <span className="text-[10px] font-extrabold uppercase tracking-[.1em] text-[#758379]">Vista previa del monto</span>
+                  <span className="text-sm font-extrabold tabular-nums text-[#173d2f]">{numericAmount > 0 ? `Gs. ${new Intl.NumberFormat("es-PY", { maximumFractionDigits: 0 }).format(numericAmount)}` : "Ingresá un monto para ver el total"}</span>
+                </div>
               </div>
 
               <button
                 type="button"
-                className="mt-6 flex w-full items-center justify-between rounded-2xl border border-[#dce7de] bg-white px-4 py-3.5 text-sm font-bold text-[#294634] transition hover:bg-[#f5f9f5]"
+                className="mt-5 flex w-full items-center justify-between rounded-2xl border border-[#dce7de] bg-white px-4 py-3.5 text-sm font-bold text-[#294634] transition hover:border-[#b9cbbb] hover:bg-[#f5f9f5]"
                 onClick={() => setDetailsOpen((open) => !open)}
                 aria-expanded={detailsOpen}
               >

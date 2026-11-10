@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import { Check, FileSpreadsheet, LoaderCircle, X } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { monthNames } from "@/lib/utils";
 import type {
   WorkbookImportInput,
   WorkbookImportRow,
@@ -11,7 +12,7 @@ import type {
 
 type RawValue = string | number | Date | null;
 type SheetRow = { sourceRow: number; values: RawValue[] };
-type ParsedSheet = { name: string; headers: string[]; rows: SheetRow[] };
+type ParsedSheet = { name: string; sourceYear: number | null; headers: string[]; rows: SheetRow[] };
 type Group = "monthly_transfer" | "other_payment";
 type Mapping = {
   date: number | null;
@@ -122,8 +123,9 @@ export function WorkbookImport({
     try {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(await nextFile.arrayBuffer());
+      const fileYear = inferWorkbookYear(nextFile.name);
       const parsedSheets = workbook.worksheets
-        .map(readWorksheet)
+        .map((worksheet) => readWorksheet(worksheet, fileYear))
         .filter((sheet) => sheet.headers.length > 0 && sheet.rows.length > 0);
       if (!parsedSheets.length) {
         setError("No encontramos hojas con encabezados y filas de datos en este archivo.");
@@ -394,7 +396,11 @@ function MappingField({
   );
 }
 
-function readWorksheet(worksheet: ExcelJS.Worksheet): ParsedSheet {
+function readWorksheet(
+  worksheet: ExcelJS.Worksheet,
+  workbookYear: number | null,
+): ParsedSheet {
+  const sourceYear = workbookYear ?? inferWorksheetYear(worksheet);
   const candidate = worksheet.getSheetValues() as unknown[][];
   let headerRow = 0;
   let bestScore = 0;
@@ -418,7 +424,7 @@ function readWorksheet(worksheet: ExcelJS.Worksheet): ParsedSheet {
     }
   }
   if (bestScore < 4) headerRow = firstTabularRow;
-  if (!headerRow) return { name: worksheet.name, headers: [], rows: [] };
+  if (!headerRow) return { name: worksheet.name, sourceYear, headers: [], rows: [] };
 
   const sourceHeader = worksheet.getRow(headerRow);
   let columnCount = 0;
@@ -430,28 +436,34 @@ function readWorksheet(worksheet: ExcelJS.Worksheet): ParsedSheet {
     const text = displayValue(sourceHeader.getCell(index + 1).value).trim();
     return text || `Columna ${index + 1}`;
   });
-  const mapped = autoMapping(headers);
-  const amountColumns = [mapped.amount, mapped.transferAmount, mapped.paymentAmount]
-    .filter((index): index is number => index !== null);
   const rows: SheetRow[] = [];
   for (let rowNumber = headerRow + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
     const row = worksheet.getRow(rowNumber);
-    if (amountColumns.some((index) => isFormulaValue(row.getCell(index + 1).value))) break;
     const values = headers.map((_, index) => normalizeValue(row.getCell(index + 1).value));
     const rowText = values.map(displayValue).join(" ").toLocaleLowerCase();
-    if (/\b(subtotal|total pagos|total gastos|total general|total del mes)\b/.test(rowText)) break;
+    if (/\b(subtotal|total(?:es)?(?:\s+(?:de\s+)?(?:pagos?|gastos?|transferencias?|general|del\s+mes))?)\b/.test(rowText)) break;
     if (values.every((value) => !displayValue(value).trim())) continue;
     rows.push({ sourceRow: rowNumber, values });
   }
-  return { name: worksheet.name, headers, rows };
+  return { name: worksheet.name, sourceYear, headers, rows };
 }
 
-function isFormulaValue(value: unknown): boolean {
-  return Boolean(
-    value &&
-      typeof value === "object" &&
-      ("formula" in value || "sharedFormula" in value),
-  );
+function inferWorkbookYear(filename: string) {
+  const match = filename.match(/\b(20\d{2})\b/);
+  return match ? Number(match[1]) : null;
+}
+
+function inferWorksheetYear(worksheet: ExcelJS.Worksheet) {
+  for (let rowNumber = 1; rowNumber <= Math.min(5, worksheet.rowCount); rowNumber += 1) {
+    let year: number | null = null;
+    worksheet.getRow(rowNumber).eachCell({ includeEmpty: false }, (cell) => {
+      if (typeof cell.value !== "string") return;
+      const match = cell.value.match(/\b(20\d{2})\b/);
+      if (match) year = Number(match[1]);
+    });
+    if (year) return year;
+  }
+  return null;
 }
 
 function normalizeValue(value: unknown): RawValue {
@@ -507,7 +519,9 @@ function prepareRow(
 ): PreparedRow[] {
   const { mapping, groupOverride } = settings;
   const raw = Object.fromEntries(sheet.headers.map((header, index) => [header, displayValue(row.values[index])]));
-  const originalDate = mapping.date === null ? null : parseDate(row.values[mapping.date]);
+  const originalDate = mapping.date === null
+    ? null
+    : parseDate(row.values[mapping.date], sheet.sourceYear);
   const date = dateCorrections[`${sheet.name}:${row.sourceRow}`] || originalDate;
   const description = descriptionCorrections[`${sheet.name}:${row.sourceRow}`] ??
     (mapping.description === null ? "" : displayValue(row.values[mapping.description]).trim());
@@ -593,7 +607,7 @@ function SummaryTile({ label, value }: { label: string; value: number }) {
   );
 }
 
-function parseDate(value: RawValue | undefined): string | null {
+function parseDate(value: RawValue | undefined, sourceYear: number | null): string | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, "0")}-${String(value.getUTCDate()).padStart(2, "0")}`;
   }
@@ -610,8 +624,18 @@ function parseDate(value: RawValue | undefined): string | null {
     : dmy
       ? [Number(dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3]), Number(dmy[2]), Number(dmy[1])]
       : null;
-  if (!parts) return null;
-  const [year, month, day] = parts;
+  const textualDate = text.match(/^\s*(\d{1,2})\s*(?:de\s+)?([a-záéíóúñ]+)(?:\s+(?:de\s+)?(20\d{2}))?\s*$/i);
+  let parsedParts = parts;
+  if (!parsedParts && textualDate) {
+    const textMonth = normalizeHeader(textualDate[2]);
+    const monthIndex = monthNames.findIndex((month) => normalizeHeader(month) === textMonth);
+    const year = textualDate[3] ? Number(textualDate[3]) : sourceYear;
+    if (monthIndex >= 0 && year) {
+      parsedParts = [year, monthIndex + 1, Number(textualDate[1])];
+    }
+  }
+  if (!parsedParts) return null;
+  const [year, month, day] = parsedParts;
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;

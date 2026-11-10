@@ -1,14 +1,18 @@
 "use client";
 
 import { Blobatar } from "@blobatar/react";
+import * as Dialog from "@radix-ui/react-dialog";
 import {
+  AlertTriangle,
   Check,
   Dices,
   KeyRound,
+  LoaderCircle,
   Plus,
   ShieldCheck,
   Sparkles,
   Tags,
+  Trash2,
   UserRound,
   Workflow,
 } from "lucide-react";
@@ -41,7 +45,14 @@ export function ProfileSettings({
 }: {
   onboarding?: boolean;
 }) {
-  const { profile, refreshProfile } = useDemoApp();
+  const {
+    profile,
+    refreshProfile,
+    workspaceRole,
+    workspaceName,
+    dataMode,
+    clearWorkspaceRecords,
+  } = useDemoApp();
 
   if (!profile) {
     return <p className="text-sm text-muted">Cargando tu perfil…</p>;
@@ -52,6 +63,10 @@ export function ProfileSettings({
       profile={profile}
       refreshProfile={refreshProfile}
       onboarding={onboarding}
+      workspaceRole={workspaceRole}
+      workspaceName={workspaceName}
+      dataMode={dataMode}
+      clearWorkspaceRecords={clearWorkspaceRecords}
     />
   );
 }
@@ -60,10 +75,18 @@ function ProfileForm({
   profile,
   refreshProfile,
   onboarding,
+  workspaceRole,
+  workspaceName,
+  dataMode,
+  clearWorkspaceRecords,
 }: {
   profile: NonNullable<ReturnType<typeof useDemoApp>["profile"]>;
   refreshProfile: () => Promise<void>;
   onboarding: boolean;
+  workspaceRole: "admin" | "operator" | null;
+  workspaceName: string | null;
+  dataMode: "loading" | "supabase" | "unassigned" | "error";
+  clearWorkspaceRecords: () => Promise<number>;
 }) {
   const router = useRouter();
   const [displayName, setDisplayName] = React.useState(profile.displayName);
@@ -378,7 +401,171 @@ function ProfileForm({
       </div>
       {!onboarding && <CategorySettings />}
       {!onboarding && <MovementTypeSettings />}
+      {!onboarding &&
+        dataMode === "supabase" &&
+        (workspaceRole === "admin" || profile.isPlatformAdmin) && (
+          <ClearRecordsSection
+            workspaceName={workspaceName}
+            clearWorkspaceRecords={clearWorkspaceRecords}
+          />
+        )}
     </div>
+  );
+}
+
+function ClearRecordsSection({
+  workspaceName,
+  clearWorkspaceRecords,
+}: {
+  workspaceName: string | null;
+  clearWorkspaceRecords: () => Promise<number>;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [confirmation, setConfirmation] = React.useState("");
+  const [deleting, setDeleting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
+
+  async function confirmClear() {
+    if (confirmation.trim().toLocaleUpperCase() !== "BORRAR") return;
+    setDeleting(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const deletedCount = await clearWorkspaceRecords();
+      setMessage(
+        deletedCount === 1
+          ? "Se borró 1 registro y ya podés volver a importar el Excel."
+          : `Se borraron ${deletedCount} registros y ya podés volver a importar el Excel.`,
+      );
+      setConfirmation("");
+      setOpen(false);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "No se pudieron borrar los registros.",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (deleting) return;
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setConfirmation("");
+      setError(null);
+    }
+  }
+
+  return (
+    <section className="mt-6 rounded-[22px] border border-[#ead5d2] bg-[linear-gradient(140deg,#fffdfc,#fff8f6)] p-5 shadow-[0_8px_24px_rgba(105,43,37,.05)] sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-[#e9c9c5] bg-[#fff0ed] text-[#a83f36]">
+          <Trash2 className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] font-extrabold uppercase tracking-[.16em] text-[#9c625b]">
+            Acción de administrador
+          </p>
+          <h3 className="mt-1 text-base font-extrabold tracking-[-.02em] text-[#472f2c]">
+            Reiniciar registros
+          </h3>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-[#755b57]">
+            Borra los movimientos y el historial de importaciones de{" "}
+            <span className="font-bold">{workspaceName ?? "este espacio"}</span>
+            . Conserva categorías, tipos de movimiento, usuarios y configuración.
+            Después podés importar nuevamente el mismo Excel.
+          </p>
+        </div>
+        <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+          <Dialog.Trigger asChild>
+            <Button
+              type="button"
+              variant="danger"
+              className="shrink-0 border border-[#e9c9c5] bg-white font-extrabold text-[#a83f36] hover:bg-[#fff0ed]"
+            >
+              <Trash2 className="size-4" />
+              Borrar todos los registros
+            </Button>
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-[#102119]/60 backdrop-blur-[3px]" />
+            <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-28px)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[24px] border border-[#e6c9c5] bg-white p-5 shadow-[0_28px_90px_rgba(34,18,16,.3)] outline-none sm:p-6">
+              <span className="grid size-11 place-items-center rounded-2xl bg-[#fff0ed] text-[#a83f36]">
+                <AlertTriangle className="size-5" />
+              </span>
+              <Dialog.Title className="mt-4 text-xl font-extrabold tracking-[-.03em] text-[#392724]">
+                ¿Borrar todos los registros?
+              </Dialog.Title>
+              <Dialog.Description className="mt-2 text-sm leading-6 text-[#705a56]">
+                Se eliminarán permanentemente los movimientos y las hojas
+                importadas de <strong>{workspaceName ?? "este espacio"}</strong>.
+                Esta acción no se puede deshacer.
+              </Dialog.Description>
+              <div className="mt-4 rounded-xl border border-[#f0dfdc] bg-[#fff9f8] p-3 text-xs leading-5 text-[#755b57]">
+                Se mantienen las categorías, los tipos de movimiento, los
+                usuarios y la configuración del espacio.
+              </div>
+              <Label htmlFor="clear-records-confirm" className="mt-5">
+                Escribí <span className="font-extrabold text-[#a83f36]">BORRAR</span> para confirmar
+              </Label>
+              <Input
+                id="clear-records-confirm"
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+                autoComplete="off"
+                autoFocus
+                placeholder="BORRAR"
+                disabled={deleting}
+                className="border-[#e2c6c2] focus:border-[#a83f36]"
+              />
+              {error && (
+                <p role="alert" className="mt-2 text-xs font-semibold text-danger">
+                  {error}
+                </p>
+              )}
+              <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                <Dialog.Close asChild>
+                  <Button type="button" variant="secondary" disabled={deleting}>
+                    Cancelar
+                  </Button>
+                </Dialog.Close>
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={() => void confirmClear()}
+                  disabled={
+                    deleting ||
+                    confirmation.trim().toLocaleUpperCase() !== "BORRAR"
+                  }
+                  className="bg-[#a83f36] text-white hover:bg-[#8c3029]"
+                >
+                  {deleting ? (
+                    <LoaderCircle className="size-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-4" />
+                  )}
+                  {deleting ? "Borrando…" : "Eliminar definitivamente"}
+                </Button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      </div>
+      {message && (
+        <p role="status" className="mt-4 text-xs font-semibold text-brand">
+          {message}
+        </p>
+      )}
+      {error && !open && (
+        <p role="alert" className="mt-4 text-xs font-semibold text-danger">
+          {error}
+        </p>
+      )}
+    </section>
   );
 }
 

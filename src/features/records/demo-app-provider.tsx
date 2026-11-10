@@ -16,6 +16,7 @@ export type UserProfile = {
 };
 
 type DataMode = "loading" | "supabase" | "unassigned" | "error";
+type WorkspaceRole = "admin" | "operator";
 
 type AppContextValue = {
   records: RecordItem[];
@@ -24,6 +25,7 @@ type AppContextValue = {
   dialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
   dataMode: DataMode;
+  workspaceRole: WorkspaceRole | null;
   workspaceName: string | null;
   categories: Array<{ id: string; name: string }>;
   movementTypes: MovementType[];
@@ -34,6 +36,7 @@ type AppContextValue = {
   updateRecord: (id: string, record: RecordMutation) => Promise<void>;
   createCategory: (name: string) => Promise<void>;
   createMovementType: (input: { name: string; color: string }) => Promise<void>;
+  clearWorkspaceRecords: () => Promise<number>;
 };
 
 export type WorkbookImportRow = {
@@ -66,6 +69,7 @@ type DbRecord = {
   movement_type_id: string;
   movement_types: { name: string; code: string; color: string } | null;
   amount_pyg: number;
+  import_batches?: { original_filename: string } | null;
   reference: string | null;
   notes: string | null;
   payment_method: string | null;
@@ -80,6 +84,8 @@ export function DemoAppProvider({ children }: { children: React.ReactNode }) {
   const [dataMode, setDataMode] = React.useState<DataMode>("loading");
   const [workspaceId, setWorkspaceId] = React.useState<string | null>(null);
   const [workspaceName, setWorkspaceName] = React.useState<string | null>(null);
+  const [workspaceRole, setWorkspaceRole] =
+    React.useState<WorkspaceRole | null>(null);
   const [userId, setUserId] = React.useState<string | null>(null);
   const [profile, setProfile] = React.useState<UserProfile | null>(null);
   const [categories, setCategories] = React.useState<
@@ -130,6 +136,7 @@ export function DemoAppProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       setWorkspaceId(null);
       setWorkspaceName(null);
+      setWorkspaceRole(null);
       setUserId(user?.id ?? null);
       setRecords([]);
       setCategories([]);
@@ -155,7 +162,7 @@ export function DemoAppProvider({ children }: { children: React.ReactNode }) {
           .maybeSingle(),
         supabase
           .from("workspace_members")
-          .select("workspace_id, workspaces(name)")
+          .select("workspace_id, role, workspaces(name)")
           .eq("user_id", user.id)
           .limit(1)
           .maybeSingle(),
@@ -187,6 +194,7 @@ export function DemoAppProvider({ children }: { children: React.ReactNode }) {
         name: string;
       } | null;
       setWorkspaceId(selectedWorkspaceId);
+      setWorkspaceRole(membership.role as WorkspaceRole);
       setWorkspaceName(workspace?.name ?? "Mi espacio");
       const [
         { data: rows, error: recordsError },
@@ -196,7 +204,7 @@ export function DemoAppProvider({ children }: { children: React.ReactNode }) {
         supabase
           .from("records")
           .select(
-            "id, record_date, source_sheet, description, record_group, movement_type_id, movement_types(name, code, color), amount_pyg, reference, notes, payment_method, categories(name)",
+            "id, record_date, source_sheet, description, record_group, movement_type_id, movement_types(name, code, color), amount_pyg, reference, notes, payment_method, categories(name), import_batches(original_filename)",
           )
           .eq("workspace_id", selectedWorkspaceId)
           .eq("is_breakdown", false)
@@ -307,7 +315,7 @@ export function DemoAppProvider({ children }: { children: React.ReactNode }) {
         supabase
           .from("records")
           .select(
-            "id, record_date, source_sheet, description, record_group, movement_type_id, movement_types(name, code, color), amount_pyg, reference, notes, payment_method, categories(name)",
+            "id, record_date, source_sheet, description, record_group, movement_type_id, movement_types(name, code, color), amount_pyg, reference, notes, payment_method, categories(name), import_batches(original_filename)",
           )
           .eq("workspace_id", workspaceId)
           .eq("is_breakdown", false)
@@ -478,6 +486,29 @@ export function DemoAppProvider({ children }: { children: React.ReactNode }) {
     setRecords((current) => current.filter((record) => record.id !== id));
   }
 
+  async function clearWorkspaceRecords() {
+    if (dataMode !== "supabase" || !workspaceId) {
+      throw new Error("No se pudo identificar el espacio actual.");
+    }
+    const { data, error } = await createClient().rpc(
+      "clear_workspace_records",
+      { target_workspace_id: workspaceId },
+    );
+    if (error?.code === "PGRST202") {
+      throw new Error(
+        "Falta aplicar la migración de reinicio de registros en Supabase.",
+      );
+    }
+    if (error?.code === "42501") {
+      throw new Error(
+        "Solo un administrador del espacio puede borrar los registros.",
+      );
+    }
+    if (error) throw new Error("Supabase no pudo borrar los registros.");
+    setRecords([]);
+    return typeof data === "number" ? data : 0;
+  }
+
   return (
     <AppContext.Provider
       value={{
@@ -487,6 +518,7 @@ export function DemoAppProvider({ children }: { children: React.ReactNode }) {
         dialogOpen,
         setDialogOpen,
         dataMode,
+        workspaceRole,
         workspaceName,
         categories,
         movementTypes,
@@ -497,6 +529,7 @@ export function DemoAppProvider({ children }: { children: React.ReactNode }) {
         updateRecord,
         createCategory,
         createMovementType,
+        clearWorkspaceRecords,
       }}
     >
       {children}
@@ -530,9 +563,17 @@ function mapDbRecord(row: DbRecord): RecordItem {
       row.movement_types?.color ??
       (row.record_group === "monthly_transfer" ? "#315b3c" : "#ac8a3e"),
     amount: Number(row.amount_pyg),
+    sourceYear:
+      extractYear(row.import_batches?.original_filename) ??
+      (row.record_date ? Number(row.record_date.slice(0, 4)) : null),
     category: row.categories?.name,
     reference: row.reference ?? undefined,
     notes: row.notes ?? undefined,
     method: row.payment_method ?? undefined,
   };
+}
+
+function extractYear(filename: string | null | undefined) {
+  const match = filename?.match(/\b(20\d{2})\b/);
+  return match ? Number(match[1]) : null;
 }

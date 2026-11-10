@@ -5,11 +5,11 @@ import {
   ArrowRight,
   CalendarDays,
   FileSpreadsheet,
+  CircleDollarSign,
   Plus,
   ReceiptText,
   ShieldCheck,
   Upload,
-  WalletCards,
 } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
@@ -44,16 +44,20 @@ export function HomeDashboard() {
       ...records.flatMap((record) =>
         record.date ? [record.date.slice(0, 4)] : [],
       ),
+      ...records.flatMap((record) =>
+        record.sourceYear ? [String(record.sourceYear)] : [],
+      ),
     ]),
   ).sort((a, b) => Number(b) - Number(a));
   const selected = records.filter((record) => {
     if (!record.date)
       return (
+        (record.sourceYear == null || String(record.sourceYear) === activeYear) &&
         monthNames.findIndex(
           (name) => normalize(name) === normalize(record.sourceSheet ?? ""),
         ) +
           1 ===
-        Number(activeMonth)
+          Number(activeMonth)
       );
     return record.date.startsWith(`${activeYear}-${activeMonth}`);
   });
@@ -162,22 +166,26 @@ export function HomeDashboard() {
     .slice(0, 6);
   return (
     <div className="animate-enter space-y-5">
-      <section className="relative isolate overflow-hidden rounded-[26px] bg-[#173d2f] px-5 py-6 text-white shadow-[0_12px_30px_rgba(17,63,45,.15)] sm:px-7 sm:py-7">
+      <section className="relative isolate overflow-hidden rounded-[28px] border border-[#315845] bg-[linear-gradient(112deg,#123628_0%,#1c4937_58%,#28533d_100%)] px-5 py-6 text-white shadow-[0_18px_42px_rgba(17,63,45,.19)] sm:px-7 sm:py-7">
         <span
           aria-hidden="true"
           className="pointer-events-none absolute -right-10 -top-36 -z-10 size-80 rounded-full border border-white/[.08]"
         />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-36 left-[42%] -z-10 size-72 rounded-full border border-[#d9c276]/10"
+        />
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
           <div>
-            <p className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.18em] text-[#d6bd79]">
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.07] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[.15em] text-[#e4ce87]">
               <CalendarDays className="size-3.5" />
-              Tu espacio · Resumen mensual
+              {workspaceName ?? "Tu espacio"} <span className="text-white/30">/</span> RESUMEN
             </p>
-            <h1 className="mt-1 text-3xl font-extrabold tracking-[-.05em] sm:text-4xl">
+            <h1 className="mt-3 text-3xl font-extrabold tracking-[-.05em] sm:text-4xl">
               Hola, {profile?.displayName.split(" ")[0] ?? "bienvenida"}.
             </h1>
-            <p className="mt-2 text-sm text-white/65">
-              Este es el resumen de lo que ya está registrado.
+            <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">
+              Consultá los movimientos y montos registrados para el período seleccionado.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -186,7 +194,7 @@ export function HomeDashboard() {
                 aria-label="Mes del inicio"
                 value={activeMonth}
                 onChange={(event) => setMonth(event.target.value)}
-                className="border-white/20 bg-[#f6f5eb] font-bold text-[#244632]"
+                className="h-11 border-white/25 bg-[#f8f7ef] font-bold text-[#244632] shadow-[0_4px_12px_rgba(0,0,0,.08)]"
               >
                 {monthNames.map((name, index) => (
                   <option key={name} value={String(index + 1).padStart(2, "0")}>
@@ -198,7 +206,7 @@ export function HomeDashboard() {
                 aria-label="Año del inicio"
                 value={activeYear}
                 onChange={(event) => setYear(event.target.value)}
-                className="border-white/20 bg-[#f6f5eb] font-bold text-[#244632]"
+                className="h-11 border-white/25 bg-[#f8f7ef] font-bold text-[#244632] shadow-[0_4px_12px_rgba(0,0,0,.08)]"
               >
                 {years.map((value) => (
                   <option key={value}>{value}</option>
@@ -207,7 +215,7 @@ export function HomeDashboard() {
             </div>
             <Button
               onClick={() => setDialogOpen(true)}
-              className="h-11 bg-[#d9c276] text-[#173d2f] shadow-none hover:bg-[#e5d18c]"
+              className="h-11 bg-[#dfc773] font-extrabold text-[#173d2f] shadow-[0_5px_14px_rgba(0,0,0,.13)] hover:bg-[#ecd78c]"
             >
               <Plus className="size-4" />
               Cargar movimiento
@@ -220,47 +228,53 @@ export function HomeDashboard() {
         {stats.map((type) => (
           <div
             key={type.id}
-            className="relative overflow-hidden rounded-[22px] border p-5"
+            className="group relative overflow-hidden rounded-[22px] border p-5 shadow-[0_5px_18px_rgba(19,49,31,.045)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(19,49,31,.1)]"
             style={{
-              borderColor: `color-mix(in srgb, ${type.color} 24%, white)`,
-              backgroundColor: `color-mix(in srgb, ${type.color} 9%, white)`,
+              borderColor: `color-mix(in srgb, ${type.color} 34%, #dfe7df)`,
+              background: `linear-gradient(135deg, color-mix(in srgb, ${type.color} 13%, white), #fff 78%)`,
             }}
           >
+            <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: type.color }} />
             <span
-              className="absolute -right-4 -top-5 grid size-20 place-items-center rounded-full bg-white/55 text-3xl font-black"
-              style={{ color: `color-mix(in srgb, ${type.color} 45%, white)` }}
+              aria-hidden="true"
+              className="absolute -right-5 -top-5 grid size-24 place-items-center rounded-full"
+              style={{
+                color: `color-mix(in srgb, ${type.color} 30%, white)`,
+                backgroundColor: `color-mix(in srgb, ${type.color} 9%, white)`,
+              }}
             >
-              {type.name.slice(0, 1).toUpperCase()}
+              <ReceiptText className="size-9" />
             </span>
-            <p
-              className="relative text-[10px] font-extrabold uppercase tracking-[.12em]"
-              style={{ color: type.color }}
-            >
+            <p className="relative flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.12em]" style={{ color: `color-mix(in srgb, ${type.color} 78%, #10251b)` }}>
+              <span className="size-2 rounded-full ring-4 ring-white/70" style={{ backgroundColor: type.color }} />
               {type.name}
             </p>
             <p
-              className="relative mt-3 text-xl font-extrabold tracking-[-.035em] sm:text-2xl"
-              style={{ color: type.color }}
+              className="relative mt-4 text-2xl font-extrabold tracking-[-.045em] sm:text-[1.7rem]"
+              style={{ color: `color-mix(in srgb, ${type.color} 82%, #10251b)` }}
             >
               {formatPyg(type.total)}
             </p>
-            <p className="relative mt-1 text-[10px] font-semibold text-[#78857b]">
-              {type.count} {type.count === 1 ? "movimiento" : "movimientos"}
+            <p className="relative mt-2 flex items-center justify-between gap-2 text-[10px] font-semibold text-[#6e7d71]">
+              <span>{type.count} {type.count === 1 ? "movimiento registrado" : "movimientos registrados"}</span>
+              {type.count > 0 && <span className="rounded-full px-2 py-1 font-extrabold" style={{ color: type.color, backgroundColor: `color-mix(in srgb, ${type.color} 12%, white)` }}>ACTIVO</span>}
             </p>
           </div>
         ))}
         <div className="relative overflow-hidden rounded-[22px] bg-[#173d2f] p-5 text-white shadow-[0_8px_20px_rgba(23,61,47,.14)]">
-          <span className="absolute -right-4 -top-5 grid size-20 place-items-center rounded-full bg-white/[.08] text-white/40">
-            <WalletCards className="size-8" />
+          <span className="absolute -right-5 -top-5 grid size-24 place-items-center rounded-full border border-white/[.06] bg-white/[.06] text-[#e2ca7d]/50">
+            <CircleDollarSign className="size-10" />
           </span>
-          <p className="relative text-[10px] font-extrabold uppercase tracking-[.12em] text-[#e0c982]">
-            Total de movimientos
+          <p className="relative flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.12em] text-[#e0c982]">
+            <span className="size-2 rounded-full bg-[#d6bd79]" />
+            Monto total registrado
           </p>
-          <p className="relative mt-3 text-xl font-extrabold tracking-[-.035em] sm:text-2xl">
+          <p className="relative mt-4 text-2xl font-extrabold tracking-[-.045em] sm:text-[1.7rem]">
             {formatPyg(total)}
           </p>
-          <p className="relative mt-1 text-[10px] font-semibold text-white/55">
-            {selected.length} registros · {periodName}
+          <p className="relative mt-2 flex items-center justify-between gap-2 text-[10px] font-semibold text-white/65">
+            <span>{selected.length} {selected.length === 1 ? "registro" : "registros"}</span>
+            <span className="rounded-full border border-white/15 bg-white/[.08] px-2 py-1 text-white/80">{periodName}</span>
           </p>
         </div>
       </section>
@@ -288,13 +302,14 @@ export function HomeDashboard() {
             {recent.map((record, index) => (
               <div
                 key={record.id}
-                className={`flex items-center gap-3 px-5 py-3.5 transition hover:bg-[#f7f9f5] sm:px-6 ${index % 2 ? "bg-[#fbfcfa]" : "bg-white"}`}
+                className={`group flex items-center gap-3 border-l-[3px] px-5 py-3.5 transition hover:bg-[#f3f7f2] sm:px-6 ${index % 2 ? "bg-[#fbfcfa]" : "bg-white"}`}
+                style={{ borderLeftColor: record.movementTypeColor }}
               >
                 <span
                   className="grid size-10 shrink-0 place-items-center rounded-xl"
                   style={{
                     color: record.movementTypeColor,
-                    backgroundColor: `color-mix(in srgb, ${record.movementTypeColor} 12%, white)`,
+                    backgroundColor: `color-mix(in srgb, ${record.movementTypeColor} 17%, white)`,
                   }}
                 >
                   <ReceiptText className="size-4" />
@@ -303,12 +318,14 @@ export function HomeDashboard() {
                   <p className="truncate text-sm font-bold text-[#344b3c]">
                     {record.description}
                   </p>
-                  <p className="mt-1 truncate text-[10px] font-medium text-[#7b887d]">
-                    {formatDate(record.date)} · {record.movementTypeName}
-                    {record.category ? ` · ${record.category}` : ""}
+                  <p className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 text-[10px] font-medium text-[#7b887d]">
+                    <span>{formatDate(record.date)}</span>
+                    <span className="text-[#c0c8c0]">·</span>
+                    <span className="rounded-full px-2 py-0.5 font-bold" style={{ color: `color-mix(in srgb, ${record.movementTypeColor} 78%, #10251b)`, backgroundColor: `color-mix(in srgb, ${record.movementTypeColor} 14%, white)` }}>{record.movementTypeName}</span>
+                    {record.category && <span className="truncate">· {record.category}</span>}
                   </p>
                 </div>
-                <p className="shrink-0 text-xs font-extrabold tabular-nums text-[#244632]">
+                <p className="shrink-0 rounded-lg bg-[#edf3ed] px-2.5 py-1.5 text-xs font-extrabold tabular-nums text-[#244632]">
                   {formatPyg(record.amount)}
                 </p>
               </div>
