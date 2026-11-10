@@ -3,9 +3,11 @@
 import { Blobatar } from "@blobatar/react";
 import {
   Check,
+  Dices,
   KeyRound,
   Plus,
   ShieldCheck,
+  Sparkles,
   Tags,
   UserRound,
   Workflow,
@@ -17,6 +19,22 @@ import { Input, Label } from "@/components/ui/field";
 import { useDemoApp } from "@/features/records/demo-app-provider";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+
+function createAvatarOptions(
+  profileId: string,
+  currentSeed: string,
+  round = "initial",
+) {
+  return Array.from(
+    new Set([
+      currentSeed,
+      ...Array.from(
+        { length: 11 },
+        (_, index) => `${profileId}-avatar-${round}-${index + 1}`,
+      ),
+    ]),
+  );
+}
 
 export function ProfileSettings({
   onboarding = false,
@@ -55,17 +73,21 @@ function ProfileForm({
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
 
-  const candidates = React.useMemo(() => {
-    return Array.from(
-      new Set([
-        profile.avatarSeed,
-        ...Array.from(
-          { length: 7 },
-          (_, index) => `${profile.id}-avatar-${index + 1}`,
-        ),
-      ]),
+  const [avatarOptions, setAvatarOptions] = React.useState(() =>
+    createAvatarOptions(profile.id, profile.avatarSeed),
+  );
+  const [avatarAnimationKey, setAvatarAnimationKey] = React.useState(0);
+
+  function chooseAvatar(seed: string) {
+    setAvatarSeed(seed);
+    setAvatarAnimationKey((key) => key + 1);
+  }
+
+  function showMoreAvatars() {
+    setAvatarOptions(
+      createAvatarOptions(profile.id, profile.avatarSeed, crypto.randomUUID()),
     );
-  }, [profile.avatarSeed, profile.id]);
+  }
 
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault();
@@ -152,35 +174,85 @@ function ProfileForm({
             </div>
           </div>
 
-          <div className="mt-7">
-            <Label>Elegí tu avatar</Label>
-            <div className="mt-3 grid grid-cols-4 gap-3 md:grid-cols-8">
-              {candidates.map((seed) => {
+          <div className="mt-7 rounded-[18px] border border-[#dce8df] bg-[linear-gradient(135deg,#f4f8f4,#edf4ef)] p-4 sm:p-5">
+            <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+              <div className="avatar-preview-halo grid size-24 shrink-0 place-items-center rounded-[28px] bg-white shadow-[0_10px_30px_rgba(23,61,47,.12)]">
+                {avatarSeed ? (
+                  <span key={avatarAnimationKey} className="avatar-preview-pop">
+                    <Blobatar
+                      name={avatarSeed}
+                      size={78}
+                      background="squircle"
+                      title=""
+                    />
+                  </span>
+                ) : (
+                  <span className="grid size-[78px] place-items-center rounded-[22px] bg-brand-soft text-brand">
+                    <UserRound className="size-9" />
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d5e4d9] bg-white/80 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-brand">
+                  <Sparkles className="size-3" /> Así te verán
+                </span>
+                <p className="mt-2 truncate text-lg font-extrabold tracking-[-.03em] text-[#173d2f]">
+                  {displayName.trim() || "Tu nombre"}
+                </p>
+                <p className="mt-0.5 text-xs text-muted">
+                  {avatarSeed
+                    ? "Tu perfil va tomando forma. Podés cambiarlo cuando quieras."
+                    : "Elegí un avatar para continuar."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <Label>Elegí tu avatar</Label>
+                <p className="mt-1 text-xs text-muted">
+                  Elegí uno de estos estilos o descubrí otros.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={showMoreAvatars}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#d6e3d9] bg-white px-3 text-xs font-bold text-brand transition hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_6px_16px_rgba(23,61,47,.1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                <Dices className="size-4" />
+                Ver otros estilos
+              </button>
+            </div>
+            <div className="mt-3 grid grid-cols-4 gap-2.5 sm:grid-cols-6 sm:gap-3">
+              {avatarOptions.map((seed, index) => {
                 const selected = avatarSeed === seed;
                 return (
                   <button
                     key={seed}
                     type="button"
-                    aria-label={
-                      selected ? "Avatar seleccionado" : "Seleccionar avatar"
-                    }
+                    aria-label={`Avatar ${index + 1}${selected ? ", seleccionado" : ", seleccionar"}`}
                     aria-pressed={selected}
-                    onClick={() => setAvatarSeed(seed)}
+                    onClick={() => chooseAvatar(seed)}
                     className={cn(
-                      "relative overflow-hidden rounded-2xl border-2 bg-subtle p-1 transition hover:-translate-y-0.5",
+                      "avatar-option group relative flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-2xl border bg-white p-2 transition duration-200 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(23,61,47,.1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
                       selected
-                        ? "border-brand shadow-[0_0_0_3px_rgba(23,107,77,.12)]"
-                        : "border-transparent",
+                        ? "border-brand bg-[#f3f8f4] shadow-[0_0_0_2px_rgba(23,61,47,.12)]"
+                        : "border-[#e3eae4] hover:border-[#a6c3b1]",
                     )}
                   >
                     <Blobatar
                       name={seed}
-                      size={56}
+                      size={58}
                       background="squircle"
                       title=""
                     />
+                    <span className="text-[9px] font-bold tracking-[.04em] text-muted">
+                      ESTILO {String(index + 1).padStart(2, "0")}
+                    </span>
                     {selected && (
-                      <span className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-brand text-white">
+                      <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-brand text-white shadow-sm">
                         <Check className="size-3" strokeWidth={3} />
                       </span>
                     )}
@@ -188,9 +260,9 @@ function ProfileForm({
                 );
               })}
             </div>
-            <p className="mt-3 text-xs text-muted">
+            <p className="mt-3 text-[11px] leading-5 text-muted">
               Los avatares se generan localmente con Blobatar; no subimos una
-              foto personal.
+              foto personal. Tu elección queda guardada en tu cuenta.
             </p>
           </div>
 
