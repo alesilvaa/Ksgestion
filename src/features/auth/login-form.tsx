@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderCircle, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,7 +19,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export function LoginForm({ callbackError }: { callbackError: boolean }) {
+export function LoginForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -83,15 +83,17 @@ export function LoginForm({ callbackError }: { callbackError: boolean }) {
             </p>
           </div>
 
-          {(serverError || callbackError) && (
+          {serverError && (
             <div
               role="alert"
               className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-medium leading-5 text-danger"
             >
-              {serverError ??
-                "No pudimos completar el acceso con Google. Intentá nuevamente."}
+              {serverError}
             </div>
           )}
+          <React.Suspense fallback={null}>
+            <OAuthCallbackError />
+          </React.Suspense>
 
           <form
             onSubmit={handleSubmit(login)}
@@ -210,6 +212,20 @@ export function LoginForm({ callbackError }: { callbackError: boolean }) {
         </footer>
       </div>
     </main>
+  );
+}
+
+function OAuthCallbackError() {
+  const searchParams = useSearchParams();
+  if (!searchParams.has("error")) return null;
+
+  return (
+    <div
+      role="alert"
+      className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-medium leading-5 text-danger"
+    >
+      No pudimos completar el acceso con Google. Intentá nuevamente.
+    </div>
   );
 }
 
